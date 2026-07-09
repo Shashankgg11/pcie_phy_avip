@@ -1,0 +1,7 @@
+pcie_phy_link_training_test
+pcie_phy_equalization_test
+pcie_phy_l0p_test
+pcie_phy_sris_test
+pcie_phy_error_injection_test
+pcie_phy_hot_reset_test
+pcie_phy_loopback_test
