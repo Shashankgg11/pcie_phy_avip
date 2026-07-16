@@ -35,7 +35,7 @@ endclass : pcie_phy_env_config
 
 //--------------------------------------------------------------------------------------------
 // Construct: new
-// Initializes class object
+// Initializes  class object
 //
 // Parameters:
 //  name - pcie_phy_env_config

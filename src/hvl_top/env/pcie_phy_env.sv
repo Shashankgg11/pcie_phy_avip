@@ -3,7 +3,7 @@
 
 //--------------------------------------------------------------------------------------------
 // Class: pcie_phy_env
-// Environment contains rc_agent, ep_agent, virtual_sequencer and scoreboard
+//  Environment contains rc_agent, ep_agent, virtual_sequencer and scoreboard
 //--------------------------------------------------------------------------------------------
 class pcie_phy_env extends uvm_env;
   `uvm_component_utils(pcie_phy_env)

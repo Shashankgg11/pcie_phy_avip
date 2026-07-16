@@ -2,7 +2,7 @@
 `define PCIE_PHY_SCOREBOARD_INCLUDED_
 
 //--------------------------------------------------------------------------------------------
-// Class: pcie_phy_scoreboard
+//  Class: pcie_phy_scoreboard
 // Cross-checks RC and EP LTSSM state transitions / Ordered Set fields against each other
 //--------------------------------------------------------------------------------------------
 class pcie_phy_scoreboard extends uvm_scoreboard;
