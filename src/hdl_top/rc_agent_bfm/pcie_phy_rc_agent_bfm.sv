@@ -24,6 +24,7 @@ module pcie_phy_rc_agent_bfm #(parameter int RC_ID = 0)(pcie_phy_if intf);
   );
 
   initial begin
+    $display("[%0t] PCIE_PHY_RC_AGENT_BFM : Instantiated - registering driver_bfm/monitor_bfm handles into config_db", $time);
     uvm_config_db#(virtual pcie_phy_rc_driver_bfm)::set(null, "*", "pcie_phy_rc_driver_bfm", pcie_phy_rc_drv_bfm_h);
     uvm_config_db#(virtual pcie_phy_rc_monitor_bfm)::set(null, "*", "pcie_phy_rc_monitor_bfm", pcie_phy_rc_mon_bfm_h);
   end

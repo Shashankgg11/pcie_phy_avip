@@ -55,6 +55,7 @@ function void pcie_phy_rc_monitor_proxy::build_phase(uvm_phase phase);
   if (!uvm_config_db #(virtual pcie_phy_rc_monitor_bfm)::get(this, "", "pcie_phy_rc_monitor_bfm", pcie_phy_rc_mon_bfm_h)) begin
     `uvm_fatal("FATAL_RC_MON_BFM", $sformatf("Couldn't get the rc monitor_bfm handle from config_db"))
   end
+  `uvm_info(get_type_name(), "Got the rc monitor_bfm handle from config_db", UVM_LOW)
 endfunction : build_phase
 
 //--------------------------------------------------------------------------------------------

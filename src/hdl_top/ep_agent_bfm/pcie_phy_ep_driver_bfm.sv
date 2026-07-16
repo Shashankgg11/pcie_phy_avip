@@ -16,6 +16,12 @@ interface pcie_phy_ep_driver_bfm(input bit aclk, input bit aresetn,
                                     output reg         ep_rx_receiver_present [NUM_LANES],
                                     output reg         ep_rx_electrical_idle_exit [NUM_LANES]);
 
+  // Proof-of-life marker — fires once at t=0 so `make simulate` shows
+  // visible evidence the driver_bfm elaborated and is alive.
+  initial begin
+    $display("[%0t] EP_DRIVER_BFM : Driver BFM Started", $time);
+  end
+
   task wait_for_aresetn();
     @(posedge aresetn);
   endtask : wait_for_aresetn
@@ -178,6 +184,7 @@ interface pcie_phy_ep_driver_bfm(input bit aclk, input bit aresetn,
   endtask : run_l1_idle
 
   task default_values();
+    $display("[%0t] EP_DRIVER_BFM : Driving default values (Electrical Idle) on all lanes", $time);
     // TODO: drive Electrical Idle / reset defaults on all lanes
   endtask : default_values
 

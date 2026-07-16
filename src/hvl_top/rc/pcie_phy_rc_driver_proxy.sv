@@ -53,6 +53,7 @@ function void pcie_phy_rc_driver_proxy::build_phase(uvm_phase phase);
   if (!uvm_config_db #(virtual pcie_phy_rc_driver_bfm)::get(this, "", "pcie_phy_rc_driver_bfm", pcie_phy_rc_drv_bfm_h)) begin
     `uvm_fatal("FATAL_RC_DRV_BFM", $sformatf("Couldn't get the rc driver_bfm handle from config_db"))
   end
+  `uvm_info(get_type_name(), "Got the rc driver_bfm handle from config_db", UVM_LOW)
 endfunction : build_phase
 
 //--------------------------------------------------------------------------------------------

@@ -12,6 +12,12 @@ interface pcie_phy_rc_monitor_bfm(input bit aclk, input bit aresetn,
                                      input [7:0] rc_tx_symbol [NUM_LANES],
                                      input        rc_tx_electrical_idle [NUM_LANES]);
 
+  // Proof-of-life marker — fires once at t=0 so `make simulate` shows
+  // visible evidence the monitor_bfm elaborated and is alive.
+  initial begin
+    $display("[%0t] RC_MONITOR_BFM : Monitor BFM Started - Capturing link activity", $time);
+  end
+
   task wait_for_aresetn();
     @(posedge aresetn);
   endtask : wait_for_aresetn

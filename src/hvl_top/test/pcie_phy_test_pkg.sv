@@ -19,6 +19,7 @@ package pcie_phy_test_pkg;
 
   `include "pcie_phy_base_test.sv"
   `include "assertion_base_test.sv"
+  `include "pcie_phy_smoke_test.sv"
   `include "pcie_phy_link_training_test.sv"
   `include "pcie_phy_equalization_test.sv"
   `include "pcie_phy_l0p_test.sv"
