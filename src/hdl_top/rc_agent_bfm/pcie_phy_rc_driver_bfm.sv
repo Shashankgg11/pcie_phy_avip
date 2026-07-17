@@ -1,193 +1,224 @@
 `ifndef PCIE_PHY_RC_DRIVER_BFM_INCLUDED_
+
 `define PCIE_PHY_RC_DRIVER_BFM_INCLUDED_
+ 
+//-------------------------------------------------------
 
-import pcie_phy_globals_pkg::*;
+// Importing global package
 
-//--------------------------------------------------------------------------------------------
-// Interface: pcie_phy_rc_driver_bfm
-// Used as the HDL driver for the Downstream Port (Root Complex).
-// It connects with the HVL driver_proxy for driving the stimulus.
-//--------------------------------------------------------------------------------------------
-interface pcie_phy_rc_driver_bfm(input bit aclk, input bit aresetn,
-                                    output reg [7:0] rc_tx_symbol [NUM_LANES],
-                                    output reg        rc_tx_electrical_idle [NUM_LANES],
-                                    input  [7:0]      ep_tx_symbol [NUM_LANES],
-                                    input             ep_tx_electrical_idle [NUM_LANES],
-                                    output reg         rc_rx_receiver_present [NUM_LANES],
-                                    output reg         rc_rx_electrical_idle_exit [NUM_LANES]);
+//-------------------------------------------------------
 
-  // Proof-of-life marker — fires once at t=0 so `make simulate` shows
-  // visible evidence the driver_bfm elaborated and is alive.
+import pcie_phy_pkg::*;
+ 
+interface pcie_phy_rc_driver_bfm(input  logic pclk,
+
+                                  input  logic preset_n,
+
+                                  //TX side (RC transmitting), one byte per active lane
+
+                                  output logic [7:0] pipe_tx_data      [0:PCIE_MAX_LANES-1],
+
+                                  output logic        pipe_tx_data_valid,
+
+                                  output pipe_rate_e   pipe_rate,       //logical rate REQUEST
+
+                                  //Logical handshake / observability (driver-owned outputs)
+
+                                  output logic        phy_link_up,
+
+                                  output ltssm_status_t         ltssm_status,
+
+                                  output data_transfer_mode_e   transfer_mode
+
+                                 );
+ 
+  //-------------------------------------------------------
+
+  // Importing UVM Package
+
+  //-------------------------------------------------------
+
+  import uvm_pkg::*;
+ 
+  //Variable: name
+
+  string name = "PCIE_PHY_RC_DRIVER_BFM";
+ 
+  //Handle back to the HVL driver_proxy - set externally once the proxy retrieves this BFM
+
+  pcie_phy_rc_driver_proxy rc_drv_proxy_h;
+ 
+  //RC configuration - set externally (normally by the proxy right after retrieving this BFM)
+
+  pcie_phy_rc_agent_config rc_agent_cfg_h;
+ 
   initial begin
-    $display("[%0t] RC_DRIVER_BFM : Driver BFM Started", $time);
+
+    `uvm_info(name, $sformatf(name), UVM_LOW)
+
   end
+ 
+ 
+  clocking rcCb @(posedge pclk);
 
-  task wait_for_aresetn();
-    @(posedge aresetn);
-  endtask : wait_for_aresetn
+    default input #1step output #0;
 
-  // ── DETECT state tasks ──────────────────────
-  task run_detect_quiet(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — detect state
-    // Reference: detect_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_detect_quiet
+    output pipe_tx_data_valid, pipe_rate, phy_link_up, ltssm_status, transfer_mode;
 
-  task run_detect_active(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — detect state
-    // Reference: detect_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_detect_active
+    input  preset_n;
 
-  // ── POLLING state tasks ──────────────────────
-  task run_polling_active(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — polling state
-    // Reference: polling_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_polling_active
+  endclocking
+ 
+  pcie_gen_e   current_speed;
 
-  task run_polling_compliance(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — polling state
-    // Reference: polling_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_polling_compliance
+  bit [7:0]    configured_link_number;
 
-  task run_polling_configuration(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — polling state
-    // Reference: polling_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_polling_configuration
+  bit [7:0]    configured_lane_number [0:PCIE_MAX_LANES-1];
 
-  // ── CONFIGURATION state tasks ──────────────────────
-  task run_linkwidth_start(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — configuration state
-    // Reference: configuration_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_linkwidth_start
+  int unsigned ts1_tx_count;
 
-  task run_linkwidth_accept(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — configuration state
-    // Reference: configuration_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_linkwidth_accept
+  int unsigned ts2_tx_count_complete;
 
-  task run_lanenum_wait(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — configuration state
-    // Reference: configuration_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_lanenum_wait
+  int unsigned idle_tx_count;
+ 
+ 
+  //-------------------------------------------------------
 
-  task run_lanenum_accept(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — configuration state
-    // Reference: configuration_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_lanenum_accept
+  // Task: wait_for_reset
 
-  task run_config_complete(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — configuration state
-    // Reference: configuration_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_config_complete
+  //-------------------------------------------------------
 
-  task run_config_idle(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — configuration state
-    // Reference: configuration_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_config_idle
+  task wait_for_reset();
 
-  // ── RECOVERY state tasks ──────────────────────
-  task run_rcvrlock(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — recovery state
-    // Reference: recovery_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_rcvrlock
+    @(negedge preset_n);
 
-  task run_equalization(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — recovery state
-    // Reference: recovery_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_equalization
+    `uvm_info(name, "SYSTEM RESET DETECTED", UVM_HIGH)
 
-  task run_speed(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — recovery state
-    // Reference: recovery_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_speed
+    default_values();
 
-  task run_rcvrcfg(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — recovery state
-    // Reference: recovery_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_rcvrcfg
+    @(posedge preset_n);
 
-  task run_idle(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — recovery state
-    // Reference: recovery_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_idle
+    `uvm_info(name, "SYSTEM RESET DEACTIVATED", UVM_HIGH)
 
-  // ── L0 state tasks ──────────────────────
-  task run_l0(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — l0 state
-    // Reference: l0_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_l0
+  endtask : wait_for_reset
+ 
+  //-------------------------------------------------------
 
-  // ── L0S state tasks ──────────────────────
-  task run_rx_l0s_entry(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — l0s state
-    // Reference: l0s_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_rx_l0s_entry
+  // Task: default_values
 
-  task run_rx_l0s_idle(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — l0s state
-    // Reference: l0s_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_rx_l0s_idle
-
-  task run_rx_l0s_fts(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — l0s state
-    // Reference: l0s_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_rx_l0s_fts
-
-  task run_tx_l0s_entry(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — l0s state
-    // Reference: l0s_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_tx_l0s_entry
-
-  task run_tx_l0s_idle(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — l0s state
-    // Reference: l0s_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_tx_l0s_idle
-
-  task run_tx_l0s_fts(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — l0s state
-    // Reference: l0s_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_tx_l0s_fts
-
-  // ── L1 state tasks ──────────────────────
-  task run_l1_entry(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — l1 state
-    // Reference: l1_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_l1_entry
-
-  task run_l1_idle(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — l1 state
-    // Reference: l1_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_l1_idle
+  //-------------------------------------------------------
 
   task default_values();
-    $display("[%0t] RC_DRIVER_BFM : Driving default values (Electrical Idle) on all lanes", $time);
-    // TODO: drive Electrical Idle / reset defaults on all lanes
+
+    rcCb.pipe_tx_data_valid <= 1'b0;
+
+    rcCb.phy_link_up        <= 1'b0;
+
+    rcCb.pipe_rate           <= PIPE_RATE_GEN1;
+
+    foreach (pipe_tx_data[l]) pipe_tx_data[l] <= '0;
+
+    foreach (configured_lane_number[l]) configured_lane_number[l] = PAD_SYMBOL;
+
+    configured_link_number = PAD_SYMBOL;
+
+    current_speed          = GEN1;
+
+    ts1_tx_count             = 0;
+
+    ts2_tx_count_complete    = 0;
+
+    idle_tx_count            = 0;
+
   endtask : default_values
+ 
+  //=========================================================================================
 
+  // SHARED HELPERS - build one TS Ordered Set (used by every state's driving side)
+
+  //=========================================================================================
+ 
+  //-------------------------------------------------------
+
+  // Task: build_ts_bytes
+
+  // Builds the raw wire-level symbols for one TS1/TS2. link_no/lane_no are passed in so the
+
+  // same helper serves Polling (PAD_SYMBOL/PAD_SYMBOL) and Configuration (real numbers).
+
+  //-------------------------------------------------------
+
+  task automatic build_ts_bytes(input os_type_e   ts_id,
+
+                                 input bit [7:0]   link_no,
+
+                                 input bit [7:0]   lane_no,
+
+                                 input bit         speed_change_req,
+
+                                 output ts_ordered_set_bytes_t bytes);
+
+    sym4_data_rate_t     sym4;
+
+    sym5_training_ctrl_t sym5;
+
+    bit [7:0]            id_byte;
+ 
+    sym4.speed_change        = speed_change_req;
+
+    sym4.autonomous_change   = 1'b0;
+
+    sym4.speed_32gts         = (rc_agent_cfg_h.target_link_speed >= GEN5);
+
+    sym4.speed_16gts         = (rc_agent_cfg_h.target_link_speed >= GEN4);
+
+    sym4.speed_8gts          = (rc_agent_cfg_h.target_link_speed >= GEN3);
+
+    sym4.speed_5gts          = (rc_agent_cfg_h.target_link_speed >= GEN2);
+
+    sym4.speed_2p5gts        = 1'b1;
+
+    sym4.flit_mode_supported = rc_agent_cfg_h.flit_mode_capable;
+ 
+    sym5.reserved_7   = 1'b0;
+
+    sym5.elbc_hi       = 1'b1;
+
+    sym5.elbc_lo       = 1'b1;
+
+    sym5.no_scrambling = 1'b0;
+
+    sym5.reserved_3    = 1'b0;
+
+    sym5.loopback      = 1'b0;
+
+    sym5.disable_link  = 1'b0;
+
+    sym5.hot_reset     = 1'b0;
+ 
+    id_byte = (ts_id == OS_TS2) ? TS2_ID_BYTE : TS1_ID_BYTE;
+ 
+    bytes.sym0_com           = COM_SYMBOL;
+
+    bytes.sym1_link_number   = link_no;
+
+    bytes.sym2_lane_number   = lane_no;
+
+    bytes.sym3_n_fts         = rc_agent_cfg_h.ntfs;
+
+    bytes.sym4_data_rate_id  = sym4;
+
+    bytes.sym5_training_ctrl = sym5;
+
+    foreach (bytes.sym6_15_identifier[i]) begin
+
+      bytes.sym6_15_identifier[i] = id_byte;
+
+    end
+
+  endtask : build_ts_bytes
+ 
 endinterface : pcie_phy_rc_driver_bfm
-
+ 
 `endif
+ 
