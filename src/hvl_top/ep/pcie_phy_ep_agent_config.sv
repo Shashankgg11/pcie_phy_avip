@@ -1,3 +1,4 @@
+
 `ifndef PCIE_PHY_EP_AGENT_CONFIG_INCLUDED_
 `define PCIE_PHY_EP_AGENT_CONFIG_INCLUDED_
  
@@ -35,6 +36,9 @@ class pcie_phy_ep_agent_config extends uvm_object;
   //override per test if you need to exercise a different value.
   bit [7:0] ntfs = NTFS_EP;
  
+  //Running disparity each lane's 8b/10b encoder starts at, at reset. Real hardware
+    running_disparity_e initial_disparity = RD_MINUS;
+ 
   //Whether the EP is willing to negotiate FLIT_MODE at all. Ignored (forced 1) once
   //target_link_speed reaches FLIT_MODE_MANDATORY_FROM_GEN.
   bit flit_mode_capable = 1;
@@ -43,6 +47,7 @@ class pcie_phy_ep_agent_config extends uvm_object;
   //partner negotiation and the GEN6-mandatory override
   data_transfer_mode_e preferred_transfer_mode = FLIT_MODE;
  
+  //Variable: use_modified_ts1_ts2_ordered_set
   //Test-level override to force Modified TS1/TS2 Ordered-Set usage from the start
   bit use_modified_ts1_ts2_ordered_set;
  
@@ -57,10 +62,6 @@ class pcie_phy_ep_agent_config extends uvm_object;
   //Convenience flag read directly by run_linkwidth_start()/run_linkwidth_accept()
   //instead of every task re-deriving it from is_upstream_port
   bit responds_to_linkwidth_start = 1;
- 
-  //Whether this EP will accept a later width upconfigure request (a Configuration
-  //re-entry that widens the link beyond what was first negotiated)
-  bit supports_upconfigure = 1;
  
   //-------------------------------------------------------
   // Timing knobs (override the package defaults per instance/test)
@@ -80,12 +81,13 @@ class pcie_phy_ep_agent_config extends uvm_object;
   bit electrical_idle_exit_assumed = ELECTRICAL_IDLE_EXIT_ASSUMED;
   bit eq_done_assumed              = EQ_DONE_ASSUMED;
  
-    //-------------------------------------------------------
+
+  //-------------------------------------------------------
   // Externally defined Tasks and Functions
   //-------------------------------------------------------
   extern function new(string name = "pcie_phy_ep_agent_config");
   extern function void do_print(uvm_printer printer);
-  //-------------------------------------------------------
+   //-------------------------------------------------------
   // Constraints
   //-------------------------------------------------------
  
@@ -99,9 +101,6 @@ endclass : pcie_phy_ep_agent_config
  
 //--------------------------------------------------------------------------------------------
 // Construct: new
-//
-// Parameters:
-//  name - pcie_phy_ep_agent_config
 //--------------------------------------------------------------------------------------------
 function pcie_phy_ep_agent_config::new(string name = "pcie_phy_ep_agent_config");
   super.new(name);
@@ -110,10 +109,6 @@ endfunction : new
  
 //--------------------------------------------------------------------------------------------
 // Function: do_print method
-// Print method can be added to display the data members values
-//
-// Parameters :
-// printer  - uvm_printer
 //--------------------------------------------------------------------------------------------
 function void pcie_phy_ep_agent_config::do_print(uvm_printer printer);
   super.do_print(printer);
@@ -126,6 +121,7 @@ function void pcie_phy_ep_agent_config::do_print(uvm_printer printer);
   printer.print_string ("max_link_width", max_link_width.name());
   printer.print_field  ("active_lanes", active_lanes, $bits(active_lanes), UVM_DEC);
   printer.print_field  ("ntfs", ntfs, $bits(ntfs), UVM_HEX);
+  printer.print_string ("initial_disparity", initial_disparity.name());
   printer.print_field  ("is_upstream_port", is_upstream_port, $bits(is_upstream_port), UVM_DEC);
   printer.print_field  ("supports_upconfigure", supports_upconfigure,
                          $bits(supports_upconfigure), UVM_DEC);
@@ -142,3 +138,4 @@ function void pcie_phy_ep_agent_config::do_print(uvm_printer printer);
 endfunction : do_print
  
 `endif
+
