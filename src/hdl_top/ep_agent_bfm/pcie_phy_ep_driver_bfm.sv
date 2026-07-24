@@ -1,192 +1,362 @@
 `ifndef PCIE_PHY_EP_DRIVER_BFM_INCLUDED_
 `define PCIE_PHY_EP_DRIVER_BFM_INCLUDED_
 
-import pcie_phy_globals_pkg::*;
+//-------------------------------------------------------
+// Importing global package
+//-------------------------------------------------------
+import pcie_phy_pkg::*;
+import pcie_phy_ep_pkg::*;
 
-//--------------------------------------------------------------------------------------------
-// Interface: pcie_phy_ep_driver_bfm
-// Used as the HDL driver for the Upstream Port (Endpoint).
-// It connects with the HVL driver_proxy for driving the stimulus.
-//--------------------------------------------------------------------------------------------
-interface pcie_phy_ep_driver_bfm(input bit aclk, input bit aresetn,
-                                    output reg [7:0] ep_tx_symbol [NUM_LANES],
-                                    output reg        ep_tx_electrical_idle [NUM_LANES],
-                                    input  [7:0]      rc_tx_symbol [NUM_LANES],
-                                    input             rc_tx_electrical_idle [NUM_LANES],
-                                    output reg         ep_rx_receiver_present [NUM_LANES],
-                                    output reg         ep_rx_electrical_idle_exit [NUM_LANES]);
+interface pcie_phy_ep_driver_bfm(input  logic pclk,
+                                  input  logic preset_n,
+                                  output logic [PCIE_MAX_LANES-1:0] pipe_tx_p,
+                                  output logic [PCIE_MAX_LANES-1:0] pipe_tx_n
+                                 );
 
-  // Proof-of-life marker — fires once at t=0 so `make simulate` shows
-  // visible evidence the driver_bfm elaborated and is alive.
+  //-------------------------------------------------------
+  // Importing UVM Package
+  //-------------------------------------------------------
+  import uvm_pkg::*;
+
+  string name = "PCIE_PHY_EP_DRIVER_BFM";
+
+
+  //EP configuration 
+  pcie_phy_ep_agent_config ep_agent_cfg_h;
+
   initial begin
-    $display("[%0t] EP_DRIVER_BFM : Driver BFM Started", $time);
+    `uvm_info(name, $sformatf(name), UVM_LOW)
   end
 
-  task wait_for_aresetn();
-    @(posedge aresetn);
-  endtask : wait_for_aresetn
 
-  // ── DETECT state tasks ──────────────────────
-  task run_detect_quiet(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — detect state
-    // Reference: detect_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
+  clocking epCb @(posedge pclk);
+    default input #1step output #0;
+    output pipe_tx_p, pipe_tx_n;
+    input  preset_n;
+  endclocking
+
+  //-------------------------------------------------------
+  // Local TX-side variable
+  //-------------------------------------------------------
+  pcie_gen_e   current_speed;
+  bit [7:0]    configured_link_number;
+  bit [7:0]    configured_lane_number [0:PCIE_MAX_LANES-1];
+  int unsigned ts1_tx_count;
+  int unsigned ts2_tx_count_complete;
+  int unsigned idle_tx_count;
+
+  //Each active lane's OWN running disparity for its 8b/10b encoder - a per-lane property,
+  running_disparity_e lane_disparity [0:PCIE_MAX_LANES-1];
+
+  //-------------------------------------------------------
+  // Task: wait_for_reset
+  //-------------------------------------------------------
+  task wait_for_reset();
+    @(negedge preset_n);
+    `uvm_info(name, "SYSTEM RESET DETECTED", UVM_HIGH)
+    default_values();
+    @(posedge preset_n);
+    `uvm_info(name, "SYSTEM RESET DEACTIVATED", UVM_HIGH)
+  endtask : wait_for_reset
+
+  //-------------------------------------------------------
+  // Task: default_values
+  //-------------------------------------------------------
+  task default_values();
+    epCb.pipe_tx_p           <= '0;
+    epCb.pipe_tx_n           <= '0;
+    foreach (configured_lane_number[l]) configured_lane_number[l] = PAD_SYMBOL;
+    foreach (lane_disparity[l]) lane_disparity[l] = ep_agent_cfg_h.initial_disparity;
+    configured_link_number = PAD_SYMBOL;
+    current_speed          = GEN1;
+    ts1_tx_count             = 0;
+    ts2_tx_count_complete    = 0;
+    idle_tx_count            = 0;
+  endtask : default_values
+
+
+  // Task: run_detect_quiet
+  //-------------------------------------------------------
+  task run_detect_quiet(output detect_substate_e next_substate);
+
+    `uvm_info(name, "Entering Detect.Quiet", UVM_MEDIUM)
+
+    // Keep transmitter in Electrical Idle
+    epCb.pipe_tx_p <= '0;
+    epCb.pipe_tx_n <= '0;
+
+    repeat (ep_agent_cfg_h.detect_timeout_cycles) begin
+
+      @(epCb);
+
+      if (check_electrical_idle_exit_any_lane()) begin
+        `uvm_info(name, "Electrical Idle Exit detected - moving to Detect.Active", UVM_HIGH)
+        next_substate = DETECT_ACTIVE;
+        return;
+      end
+
+    end
+
+    `uvm_info(name, "Detect.Quiet timeout expired - moving to Detect.Active",UVM_HIGH)
+
+    next_substate = DETECT_ACTIVE;
+
   endtask : run_detect_quiet
 
-  task run_detect_active(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — detect state
-    // Reference: detect_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
+  // Task: run_detect_active
+  //-------------------------------------------------------
+  task run_detect_active(output ltssm_state_e next_state);
+
+    bit [PCIE_MAX_LANES-1:0] pass1_mask;
+    bit [PCIE_MAX_LANES-1:0] pass2_mask;
+    bit [PCIE_MAX_LANES-1:0] expected_mask;
+
+    `uvm_info(name, "Entering Detect.Active", UVM_MEDIUM)
+
+    expected_mask = '0;
+    for (int lane = 0; lane < ep_agent_cfg_h.active_lanes; lane++)
+      expected_mask[lane] = 1'b1;
+
+    // First Receiver Detection
+    pass1_mask = perform_receiver_detection_all_lanes();
+
+    if (pass1_mask == '0) begin
+      `uvm_info(name, "No receiver detected - returning to Detect.Quiet",UVM_HIGH)
+      next_state = DETECT_ST;
+      return;
+    end
+
+    if (pass1_mask == expected_mask) begin
+      `uvm_info(name, "Receiver detected on all active lanes - moving to Polling",UVM_HIGH)
+      next_state = POLLING_ST;
+      return;
+    end
+
+    `uvm_info(name, "Partial receiver detection - retrying Receiver Detection", UVM_HIGH)
+
+    repeat (ep_agent_cfg_h.detect_timeout_cycles)
+      @(epCb);
+
+    // Second Receiver Detection
+    pass2_mask = perform_receiver_detection_all_lanes();
+
+    if (pass2_mask == expected_mask) begin
+      `uvm_info(name, "Receiver detected on retry - moving to Polling", UVM_HIGH)
+      next_state = POLLING_ST;
+    end
+    else begin
+      `uvm_info(name, "Receiver detection failed - returning to Detect.Quiet", UVM_HIGH)
+      next_state = DETECT_ST;
+    end
+
   endtask : run_detect_active
 
-  // ── POLLING state tasks ──────────────────────
-  task run_polling_active(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — polling state
-    // Reference: polling_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_polling_active
+  // check_electrical_idle_exit_any_lane
+  // electrical part so taking assumptions 
+  //-------------------------------------------------------
+  function automatic bit check_electrical_idle_exit_any_lane();
+    return ELECTRICAL_IDLE_EXIT_ASSUMED;
+  endfunction : check_electrical_idle_exit_any_lane
 
-  task run_polling_compliance(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — polling state
-    // Reference: polling_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_polling_compliance
+  // Function: perform_receiver_detection_all_lanes
+  //-------------------------------------------------------
+  function automatic bit [PCIE_MAX_LANES-1:0] perform_receiver_detection_all_lanes();
 
-  task run_polling_configuration(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — polling state
-    // Reference: polling_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_polling_configuration
+    bit [PCIE_MAX_LANES-1:0] lane_mask;
 
-  // ── CONFIGURATION state tasks ──────────────────────
-  task run_linkwidth_start(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — configuration state
-    // Reference: configuration_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_linkwidth_start
+    lane_mask = '0;
 
-  task run_linkwidth_accept(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — configuration state
-    // Reference: configuration_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_linkwidth_accept
+    if(!RX_DETECT_ASSUMED) return lane_mask;
 
-  task run_lanenum_wait(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — configuration state
-    // Reference: configuration_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_lanenum_wait
+    for(int lane = 0; lane < ep_agent_cfg_h.active_lanes; lane++)begin
+      lane_mask[lane] = 1'b1;
+    end
 
-  task run_lanenum_accept(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — configuration state
-    // Reference: configuration_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_lanenum_accept
+    `uvm_info(name, $sformatf("Receiver detected on %0d active lane(s). Mask = %0h",ep_agent_cfg_h.active_lanes, lane_mask), UVM_HIGH)
 
-  task run_config_complete(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — configuration state
-    // Reference: configuration_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_config_complete
+    return lane_mask;
 
-  task run_config_idle(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — configuration state
-    // Reference: configuration_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_config_idle
+  endfunction : perform_receiver_detection_all_lanes
 
-  // ── RECOVERY state tasks ──────────────────────
-  task run_rcvrlock(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — recovery state
-    // Reference: recovery_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_rcvrlock
+  //-------------------------------------------------------
+  // Function: encode_8b10b_symbol
+  // It takes byte value and running disparity from the pkg
+  // is_k_code selects the special-case K-code pairs vs the generic D-code tables
+  //-------------------------------------------------------
+  function automatic bit [9:0] encode_8b10b_symbol(input bit [7:0] byte_val,
+                                                     input bit is_k_code,
+                                                     input running_disparity_e cur_rd);
+    if (is_k_code) begin
+      case (byte_val)
+        COM_SYMBOL: encode_8b10b_symbol = (cur_rd == RD_MINUS) ? K_COM_N : K_COM_P;
+        PAD_SYMBOL: encode_8b10b_symbol = (cur_rd == RD_MINUS) ? K_PAD_N : K_PAD_P;
+        SKP_SYMBOL: encode_8b10b_symbol = (cur_rd == RD_MINUS) ? K_SKP_N : K_SKP_P;
+        STP_TOKEN:  encode_8b10b_symbol = (cur_rd == RD_MINUS) ? K_STP_N : K_STP_P;
+        SDP_TOKEN:  encode_8b10b_symbol = (cur_rd == RD_MINUS) ? K_SDP_N : K_SDP_P;
+        END_TOKEN:  encode_8b10b_symbol = (cur_rd == RD_MINUS) ? K_END_N : K_END_P;
+        EDB_TOKEN:  encode_8b10b_symbol = (cur_rd == RD_MINUS) ? K_EDB_N : K_EDB_P;
+        EIE_SYM:    encode_8b10b_symbol = (cur_rd == RD_MINUS) ? K_EIE_N : K_EIE_P;
+        default:    encode_8b10b_symbol = (cur_rd == RD_MINUS) ? D_NEG_DISP[byte_val]
+                                                                 : D_POS_DISP[byte_val];
+      endcase
+    end
+    else begin
+      encode_8b10b_symbol = (cur_rd == RD_MINUS) ? D_NEG_DISP[byte_val] : D_POS_DISP[byte_val];
+    end
+  endfunction : encode_8b10b_symbol
 
-  task run_equalization(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — recovery state
-    // Reference: recovery_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_equalization
+  //-------------------------------------------------------
+  // Function: next_running_disparity
+  // Standard 8b/10b running-disparity update rule: count 1s in the just-sent 10-bit symbol;
+  // more 1s -> next symbol is RD_PLUS; more 0s -> RD_MINUS; exactly balanced (5 and 5) ->
+  // disparity carries over unchanged.
+  //-------------------------------------------------------
+  function automatic running_disparity_e next_running_disparity(input bit [9:0] encoded_symbol,
+                                                                  input running_disparity_e cur_rd);
+    int ones;
+    ones = 0;
+    for (int i = 0; i < 10; i++) begin
+      if (encoded_symbol[i]) ones++;
+    end
+    if (ones > 5)      next_running_disparity = RD_PLUS;
+    else if (ones < 5) next_running_disparity = RD_MINUS;
+    else               next_running_disparity = cur_rd;
+  endfunction : next_running_disparity
 
-  task run_speed(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — recovery state
-    // Reference: recovery_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_speed
+  //-------------------------------------------------------
+  // Task: build_ts_bytes
+  //  16-symbol TS content. Serialization/encoding happens entirely
+  //-------------------------------------------------------
+  task automatic build_ts_bytes(input os_type_e   ts_id,
+                                 input bit [7:0]   link_no,
+                                 input bit [7:0]   lane_no,
+                                 input bit         speed_change_req,
+                                 output ts_ordered_set_bytes_t bytes);
+    sym4_data_rate_t     sym4;
+    sym5_training_ctrl_t sym5;
+    bit [7:0]            id_byte;
 
-  task run_rcvrcfg(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — recovery state
-    // Reference: recovery_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_rcvrcfg
+    sym4.speed_change        = speed_change_req;
+    sym4.autonomous_change   = 1'b0;
+    sym4.speed_32gts         = (ep_agent_cfg_h.target_link_speed >= GEN5);
+    sym4.speed_16gts         = (ep_agent_cfg_h.target_link_speed >= GEN4);
+    sym4.speed_8gts          = (ep_agent_cfg_h.target_link_speed >= GEN3);
+    sym4.speed_5gts          = (ep_agent_cfg_h.target_link_speed >= GEN2);
+    sym4.speed_2p5gts        = 1'b1;
+    sym4.flit_mode_supported = ep_agent_cfg_h.flit_mode_capable;
 
-  task run_idle(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — recovery state
-    // Reference: recovery_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_idle
+    sym5.reserved_7   = 1'b0;
+    sym5.elbc_hi       = 1'b1;
+    sym5.elbc_lo       = 1'b1;
+    sym5.no_scrambling = 1'b0;
+    sym5.reserved_3    = 1'b0;
+    sym5.loopback      = 1'b0;
+    sym5.disable_link  = 1'b0;
+    sym5.hot_reset     = 1'b0;
 
-  // ── L0 state tasks ──────────────────────
-  task run_l0(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — l0 state
-    // Reference: l0_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_l0
+    id_byte = (ts_id == OS_TS2) ? TS2_ID_BYTE : TS1_ID_BYTE;
 
-  // ── L0S state tasks ──────────────────────
-  task run_rx_l0s_entry(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — l0s state
-    // Reference: l0s_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_rx_l0s_entry
+    bytes.sym0_com           = COM_SYMBOL;
+    bytes.sym1_link_number   = link_no;
+    bytes.sym2_lane_number   = lane_no;
+    bytes.sym3_n_fts         = ep_agent_cfg_h.ntfs;
+    bytes.sym4_data_rate_id  = sym4;
+    bytes.sym5_training_ctrl = sym5;
+    foreach (bytes.sym6_15_identifier[i]) begin
+      bytes.sym6_15_identifier[i] = id_byte;
+    end
+  endtask : build_ts_bytes
 
-  task run_rx_l0s_idle(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — l0s state
-    // Reference: l0s_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_rx_l0s_idle
+  //-------------------------------------------------------
+  // Task: drive_ts
+  // Builds one TS (via build_ts_bytes, then for EACH of its 16 symbols: encodes
+  // that symbol per-lane (own disparity, own lane-number where applicable), and serializes the resulting 10-bit codes out bit-by-bit across all
+  // active lanes 
+  //-------------------------------------------------------
+  task automatic drive_ts(input os_type_e ts_id, input bit [7:0] link_no, input bit [7:0] lane_no,
+                           input bit speed_change_req, input bit lane_no_per_lane);
+    ts_ordered_set_bytes_t bytes;
+    bit [7:0] sym_array   [0:TS_OS_LENGTH-1];
+    bit       is_k_array  [0:TS_OS_LENGTH-1];
+    bit [9:0] encoded     [0:PCIE_MAX_LANES-1];
 
-  task run_rx_l0s_fts(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — l0s state
-    // Reference: l0s_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_rx_l0s_fts
+    build_ts_bytes(ts_id, link_no, lane_no, speed_change_req, bytes);
 
-  task run_tx_l0s_entry(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — l0s state
-    // Reference: l0s_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_tx_l0s_entry
+    sym_array[0] = bytes.sym0_com;           is_k_array[0] = 1'b1; //COM is the only K-code
+    sym_array[1] = bytes.sym1_link_number;   is_k_array[1] = 1'b0;
+    //sym_array[2]/is_k_array[2] unused - symbol 2 (lane number) is built per-lane below
+    sym_array[3] = bytes.sym3_n_fts;         is_k_array[3] = 1'b0;
+    sym_array[4] = bytes.sym4_data_rate_id;  is_k_array[4] = 1'b0;
+    sym_array[5] = bytes.sym5_training_ctrl; is_k_array[5] = 1'b0;
+    for (int i = 0; i < 10; i++) begin
+      sym_array[6+i] = bytes.sym6_15_identifier[i];
+      is_k_array[6+i] = 1'b0; //TS1/TS2 identifier bytes are D-codes, not K-codes
+    end
 
-  task run_tx_l0s_idle(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — l0s state
-    // Reference: l0s_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_tx_l0s_idle
+    for (int s = 0; s < TS_OS_LENGTH; s++) begin
+      //Encode this symbol-time ONCE per lane (own byte for s==2, own running disparity),
+      for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++) begin
+        bit [7:0] this_byte;
+        this_byte = (s == 2) ? (lane_no_per_lane ? configured_lane_number[l] : lane_no)
+                              : sym_array[s];
+        encoded[l] = encode_8b10b_symbol(this_byte, is_k_array[s], lane_disparity[l]);
+        lane_disparity[l] = next_running_disparity(encoded[l], lane_disparity[l]);
+      end
 
-  task run_tx_l0s_fts(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — l0s state
-    // Reference: l0s_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_tx_l0s_fts
+      //Serialize this symbol-time's 10 bits across all active lanes, bit-aligned: every
+      //lane's bit b goes out on the same clock edge. 
+      for (int b = 0; b < 10; b++) begin
+        logic [PCIE_MAX_LANES-1:0] tx_p_bits, tx_n_bits;
+        @(epCb);
+        tx_p_bits = '0;
+        tx_n_bits = '0;
+        for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++) begin
+          if (encoded[l][b]) begin
+            tx_p_bits[l] = 1'b1;
+            tx_n_bits[l] = 1'b0;
+          end
+          else begin
+            tx_p_bits[l] = 1'b0;
+            tx_n_bits[l] = 1'b1;
+          end
+        end
+        epCb.pipe_tx_p <= tx_p_bits;
+        epCb.pipe_tx_n <= tx_n_bits;
+      end
+    end
+  endtask : drive_ts
 
-  // ── L1 state tasks ──────────────────────
-  task run_l1_entry(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — l1 state
-    // Reference: l1_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_l1_entry
+  //-------------------------------------------------------
+  // Task: drive_idle
+  // Same encode-then-serialize path as drive_ts, but for the single repeated Idle (D0.0)
+  //-------------------------------------------------------
+  task automatic drive_idle();
+    bit [9:0] encoded [0:PCIE_MAX_LANES-1];
 
-  task run_l1_idle(output next_state_e next);
-    // TODO: implement per PCIe Gen6 Logical PHY spec — l1 state
-    // Reference: l1_state.pdf (BFM Implementation Spec)
-    next = NEXT_NONE;
-  endtask : run_l1_idle
+    for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++) begin
+      encoded[l] = encode_8b10b_symbol(IDLE_SYMBOL, 1'b0, lane_disparity[l]); //D0.0 - D-code
+      lane_disparity[l] = next_running_disparity(encoded[l], lane_disparity[l]);
+    end
 
-  task default_values();
-    $display("[%0t] EP_DRIVER_BFM : Driving default values (Electrical Idle) on all lanes", $time);
-    // TODO: drive Electrical Idle / reset defaults on all lanes
-  endtask : default_values
+    for (int b = 0; b < 10; b++) begin
+      logic [PCIE_MAX_LANES-1:0] tx_p_bits, tx_n_bits;
+      @(epCb);
+      tx_p_bits = '0;
+      tx_n_bits = '0;
+      for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++) begin
+        if (encoded[l][b]) begin
+          tx_p_bits[l] = 1'b1;
+          tx_n_bits[l] = 1'b0;
+        end
+        else begin
+          tx_p_bits[l] = 1'b0;
+          tx_n_bits[l] = 1'b1;
+        end
+      end
+      epCb.pipe_tx_p <= tx_p_bits;
+      epCb.pipe_tx_n <= tx_n_bits;
+    end
+  endtask : drive_idle
 
 endinterface : pcie_phy_ep_driver_bfm
 
