@@ -69,15 +69,49 @@ endfunction : connect_phase
 
 //--------------------------------------------------------------------------------------------
 // Task: run_phase
-// <Description_here>
+// Waits for reset once, then forever pulls items from the sequencer and dispatches them to
+// the matching pcie_phy_rc_drv_bfm_h task based on req.target_state. This is the one place
+// that maps an LTSSM state directive onto an actual bit-serial driver_bfm task - extend the
+// case statement here whenever a new state/task is added to the driver_bfm.
 //
 // Parameters:
 //  phase - uvm phase
 //--------------------------------------------------------------------------------------------
 task pcie_phy_rc_driver_proxy::run_phase(uvm_phase phase);
+  //Propagate the agent config into the BFM's own handle. Done here (not build/connect_phase)
+  //because run_phase is guaranteed to start only after every component's connect_phase has
+  //finished, regardless of bottom-up/top-down ordering between this proxy and its agent -
+  //pcie_phy_rc_agent_cfg_h is set by pcie_phy_rc_agent::connect_phase(), so by this point it
+  //is always valid.
+  pcie_phy_rc_drv_bfm_h.rc_agent_cfg_h = pcie_phy_rc_agent_cfg_h;
+
+  pcie_phy_rc_drv_bfm_h.wait_for_reset();
+
   forever begin
     seq_item_port.get_next_item(req);
-    // TODO: dispatch to pcie_phy_rc_drv_bfm_h.run_<state>_task(...) based on req.target_state
+    `uvm_info(get_type_name(),
+              $sformatf("Dispatching req: target_state=%s requested_gen=%s requested_width=%s",
+                        req.target_state.name(), req.requested_gen.name(), req.requested_width.name()),
+              UVM_MEDIUM)
+
+    case (req.target_state)
+      // Detect/Polling/Recovery all transmit TS1 in this simplified model - only the
+      // ordered-set ID byte differs once Configuration is reached (TS2).
+      DETECT_ST, POLLING_ST, RECOVERY_ST:
+        pcie_phy_rc_drv_bfm_h.drive_ts(OS_TS1, 8'h00, 8'h00, 1'b0, 1'b0);
+
+      CONFIG_ST:
+        pcie_phy_rc_drv_bfm_h.drive_ts(OS_TS2, 8'h00, 8'h00, 1'b0, 1'b0);
+
+      L0_ST, L0s_ST, L1_ST:
+        pcie_phy_rc_drv_bfm_h.drive_idle();
+
+      default:
+        `uvm_warning(get_type_name(),
+                     $sformatf("No driver_bfm dispatch defined yet for target_state=%s - add a case here",
+                               req.target_state.name()))
+    endcase
+
     seq_item_port.item_done();
   end
 endtask : run_phase

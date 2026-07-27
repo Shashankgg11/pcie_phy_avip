@@ -37,8 +37,8 @@ task pcie_phy_rc_detect_seq::body();
   `uvm_info(get_type_name(), $sformatf("Starting %s", get_type_name()), UVM_MEDIUM)
   req = pcie_phy_rc_tx::type_id::create("req");
   start_item(req);
-  if (!req.randomize()) `uvm_error(get_type_name(), "Randomization failed")
-  // TODO: constrain req.target_state / directive fields for this sequence
+  if (!req.randomize() with { target_state == DETECT_ST; })
+    `uvm_error(get_type_name(), "Randomization failed")
   finish_item(req);
 endtask : body
 

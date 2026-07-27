@@ -69,15 +69,46 @@ endfunction : connect_phase
 
 //--------------------------------------------------------------------------------------------
 // Task: run_phase
-// <Description_here>
+// Waits for reset once, then forever pulls items from the sequencer and dispatches them to
+// the matching pcie_phy_ep_drv_bfm_h task based on req.target_state. Mirrors
+// pcie_phy_rc_driver_proxy - extend the case statement here whenever a new state/task is
+// added to the driver_bfm (note: ep_driver_bfm.sv also has run_detect_quiet/run_detect_active/
+// receiver-detection tasks not dispatched here yet - those need their own state-machine loop
+// around them rather than a single call per item, so they're intentionally left out for now).
 //
 // Parameters:
 //  phase - uvm phase
 //--------------------------------------------------------------------------------------------
 task pcie_phy_ep_driver_proxy::run_phase(uvm_phase phase);
+  //Propagate the agent config into the BFM's own handle - see rc_driver_proxy for why this
+  //has to happen in run_phase rather than build/connect_phase.
+  pcie_phy_ep_drv_bfm_h.ep_agent_cfg_h = pcie_phy_ep_agent_cfg_h;
+
+  pcie_phy_ep_drv_bfm_h.wait_for_reset();
+
   forever begin
     seq_item_port.get_next_item(req);
-    // TODO: dispatch to pcie_phy_ep_drv_bfm_h.run_<state>_task(...) based on req.target_state
+    `uvm_info(get_type_name(),
+              $sformatf("Dispatching req: target_state=%s requested_gen=%s requested_width=%s",
+                        req.target_state.name(), req.requested_gen.name(), req.requested_width.name()),
+              UVM_MEDIUM)
+
+    case (req.target_state)
+      DETECT_ST, POLLING_ST, RECOVERY_ST:
+        pcie_phy_ep_drv_bfm_h.drive_ts(OS_TS1, 8'h00, 8'h00, 1'b0, 1'b0);
+
+      CONFIG_ST:
+        pcie_phy_ep_drv_bfm_h.drive_ts(OS_TS2, 8'h00, 8'h00, 1'b0, 1'b0);
+
+      L0_ST, L0s_ST, L1_ST:
+        pcie_phy_ep_drv_bfm_h.drive_idle();
+
+      default:
+        `uvm_warning(get_type_name(),
+                     $sformatf("No driver_bfm dispatch defined yet for target_state=%s - add a case here",
+                               req.target_state.name()))
+    endcase
+
     seq_item_port.item_done();
   end
 endtask : run_phase
