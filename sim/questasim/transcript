@@ -1,0 +1,145 @@
+# vsim pcie_phy_opt "+UVM_TESTNAME=pcie_phy_link_training_test" -c -do "run -all; quit -f" 
+# Start time: 22:43:05 on Jul 26,2026
+# //  Questa Sim
+# //  Version 10.6c linux Jul 25 2017
+# //
+# //  Copyright 1991-2017 Mentor Graphics Corporation
+# //  All Rights Reserved.
+# //
+# //  QuestaSim and its associated documentation contain trade
+# //  secrets and commercial or financial information that are the property of
+# //  Mentor Graphics Corporation and are privileged, confidential,
+# //  and exempt from disclosure under the Freedom of Information Act,
+# //  5 U.S.C. Section 552. Furthermore, this information
+# //  is prohibited from disclosure under the Trade Secrets Act,
+# //  18 U.S.C. Section 1905.
+# //
+# Loading sv_std.std
+# Loading work.pcie_phy_ep_driver_bfm(fast)
+# Loading work.pcie_phy_ep_monitor_bfm(fast)
+# Loading work.pcie_phy_pkg(fast)
+# Loading mtiUvm.uvm_pkg
+# Loading work.pcie_phy_ep_pkg(fast)
+# Loading work.pcie_phy_rc_driver_bfm(fast)
+# Loading work.pcie_phy_rc_monitor_bfm(fast)
+# Loading work.pcie_phy_rc_pkg(fast)
+# Loading work.pcie_phy_globals_pkg_sv_unit(fast)
+# Loading work.hdl_top(fast)
+# Loading work.pcie_phy_if(fast)
+# Loading work.pcie_phy_rc_agent_bfm(fast)
+# Loading work.pcie_phy_rc_driver_bfm(fast)
+# Loading work.pcie_phy_rc_monitor_bfm(fast)
+# Loading work.pcie_phy_ep_agent_bfm(fast)
+# Loading work.pcie_phy_ep_driver_bfm(fast)
+# Loading work.pcie_phy_ep_monitor_bfm(fast)
+# Loading work.pcie_phy_env_pkg(fast)
+# Loading work.pcie_phy_ep_seq_pkg(fast)
+# Loading work.pcie_phy_rc_seq_pkg(fast)
+# Loading work.pcie_phy_virtual_seq_pkg(fast)
+# Loading work.pcie_phy_test_pkg(fast)
+# Loading work.hvl_top(fast)
+# Loading mtiUvm.questa_uvm_pkg(fast)
+# Loading /tools/mentor/questasim_10.6c/questasim/uvm-1.1d/linux/uvm_dpi.so
+# run -all
+# ----------------------------------------------------------------
+# UVM-1.1d
+# (C) 2007-2013 Mentor Graphics Corporation
+# (C) 2007-2013 Cadence Design Systems, Inc.
+# (C) 2006-2013 Synopsys, Inc.
+# (C) 2011-2013 Cypress Semiconductor Corp.
+# ----------------------------------------------------------------
+# 
+#   ***********       IMPORTANT RELEASE NOTES         ************
+# 
+#   You are using a version of the UVM library that has been compiled
+#   with `UVM_NO_DEPRECATED undefined.
+#   See http://www.eda.org/svdb/view.php?id=3313 for more details.
+# 
+#   You are using a version of the UVM library that has been compiled
+#   with `UVM_OBJECT_MUST_HAVE_CONSTRUCTOR undefined.
+#   See http://www.eda.org/svdb/view.php?id=3770 for more details.
+# 
+#       (Specify +UVM_NO_RELNOTES to turn off this notice)
+# 
+# UVM_INFO verilog_src/questa_uvm_pkg-1.2/src/questa_uvm_pkg.sv(215) @ 0: reporter [Questa UVM] QUESTA_UVM-1.2.3
+# UVM_INFO verilog_src/questa_uvm_pkg-1.2/src/questa_uvm_pkg.sv(217) @ 0: reporter [Questa UVM]  questa_uvm::init(+struct)
+# HDL_TOP
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(28) @ 0: reporter [PCIE_PHY_RC_DRIVER_BFM] PCIE_PHY_RC_DRIVER_BFM
+# [0] RC_MONITOR_BFM : Monitor BFM Started - Capturing link activity
+# [0] PCIE_PHY_RC_AGENT_BFM : Instantiated - registering driver_bfm/monitor_bfm handles into config_db
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(28) @ 0: reporter [PCIE_PHY_EP_DRIVER_BFM] PCIE_PHY_EP_DRIVER_BFM
+# [0] EP_MONITOR_BFM : Monitor BFM Started - Capturing link activity
+# [0] PCIE_PHY_EP_AGENT_BFM : Instantiated - registering driver_bfm/monitor_bfm handles into config_db
+# UVM_INFO @ 0: reporter [RNTST] Running test pcie_phy_link_training_test...
+# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(56) @ 0: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Got the ep driver_bfm handle from config_db
+# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_monitor_proxy.sv(58) @ 0: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_mon_proxy_h [pcie_phy_ep_monitor_proxy] Got the ep monitor_bfm handle from config_db
+# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(56) @ 0: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Got the rc driver_bfm handle from config_db
+# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_monitor_proxy.sv(58) @ 0: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_mon_proxy_h [pcie_phy_rc_monitor_proxy] Got the rc monitor_bfm handle from config_db
+# UVM_INFO @ 0: reporter [UVMTOP] UVM testbench topology:
+# ---------------------------------------------------------------------------
+# Name                               Type                         Size  Value
+# ---------------------------------------------------------------------------
+# uvm_test_top                       pcie_phy_link_training_test  -     @487 
+#   pcie_phy_env_h                   pcie_phy_env                 -     @501 
+#     pcie_phy_ep_agent_h[0]         pcie_phy_ep_agent            -     @516 
+#       pcie_phy_ep_drv_proxy_h      pcie_phy_ep_driver_proxy     -     @656 
+#         rsp_port                   uvm_analysis_port            -     @671 
+#         seq_item_port              uvm_seq_item_pull_port       -     @663 
+#       pcie_phy_ep_ltssm_seqr_h     pcie_phy_ep_ltssm_sequencer  -     @679 
+#         rsp_export                 uvm_analysis_export          -     @686 
+#         seq_item_export            uvm_seq_item_pull_imp        -     @780 
+#         arbitration_queue          array                        0     -    
+#         lock_queue                 array                        0     -    
+#         num_last_reqs              integral                     32    'd1  
+#         num_last_rsps              integral                     32    'd1  
+#       pcie_phy_ep_mon_proxy_h      pcie_phy_ep_monitor_proxy    -     @788 
+#         ltssm_state_analysis_port  uvm_analysis_port            -     @795 
+#     pcie_phy_rc_agent_h[0]         pcie_phy_rc_agent            -     @509 
+#       pcie_phy_rc_drv_proxy_h      pcie_phy_rc_driver_proxy     -     @811 
+#         rsp_port                   uvm_analysis_port            -     @826 
+#         seq_item_port              uvm_seq_item_pull_port       -     @818 
+#       pcie_phy_rc_ltssm_seqr_h     pcie_phy_rc_ltssm_sequencer  -     @834 
+#         rsp_export                 uvm_analysis_export          -     @841 
+#         seq_item_export            uvm_seq_item_pull_imp        -     @935 
+#         arbitration_queue          array                        0     -    
+#         lock_queue                 array                        0     -    
+#         num_last_reqs              integral                     32    'd1  
+#         num_last_rsps              integral                     32    'd1  
+#       pcie_phy_rc_mon_proxy_h      pcie_phy_rc_monitor_proxy    -     @943 
+#         ltssm_state_analysis_port  uvm_analysis_port            -     @950 
+#     pcie_phy_scoreboard_h          pcie_phy_scoreboard          -     @632 
+#       pcie_phy_ep_analysis_export  uvm_analysis_imp_ep          -     @647 
+#       pcie_phy_rc_analysis_export  uvm_analysis_imp_rc          -     @639 
+#     pcie_phy_virtual_seqr_h        pcie_phy_virtual_sequencer   -     @523 
+#       rsp_export                   uvm_analysis_export          -     @530 
+#       seq_item_export              uvm_seq_item_pull_imp        -     @624 
+#       arbitration_queue            array                        0     -    
+#       lock_queue                   array                        0     -    
+#       num_last_reqs                integral                     32    'd1  
+#       num_last_rsps                integral                     32    'd1  
+# ---------------------------------------------------------------------------
+# 
+# UVM_INFO verilog_src/uvm-1.1d/src/base/uvm_objection.svh(1268) @ 0: reporter [TEST_DONE] 'run' phase is ready to proceed to the 'extract' phase
+# 
+# --- UVM Report Summary ---
+# 
+# ** Report counts by severity
+# UVM_INFO :   11
+# UVM_WARNING :    0
+# UVM_ERROR :    0
+# UVM_FATAL :    0
+# ** Report counts by id
+# [PCIE_PHY_EP_DRIVER_BFM]     1
+# [PCIE_PHY_RC_DRIVER_BFM]     1
+# [Questa UVM]     2
+# [RNTST]     1
+# [TEST_DONE]     1
+# [UVMTOP]     1
+# [pcie_phy_ep_driver_proxy]     1
+# [pcie_phy_ep_monitor_proxy]     1
+# [pcie_phy_rc_driver_proxy]     1
+# [pcie_phy_rc_monitor_proxy]     1
+# ** Note: $finish    : /tools/mentor/questasim_10.6c/questasim/linux/../verilog_src/uvm-1.1d/src/base/uvm_root.svh(430)
+#    Time: 0 ps  Iteration: 216  Instance: /hvl_top
+# End time: 22:43:06 on Jul 26,2026, Elapsed time: 0:00:01
+# Errors: 0, Warnings: 0

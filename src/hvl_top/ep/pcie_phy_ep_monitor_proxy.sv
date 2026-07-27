@@ -80,7 +80,7 @@ task pcie_phy_ep_monitor_proxy::run_phase(uvm_phase phase);
   forever begin
     // TODO: call pcie_phy_ep_mon_bfm_h.sample_<state>() per current LTSSM state,
     //       build a pcie_phy_ep_tx item, ltssm_state_analysis_port.write(item)
-    @(posedge pcie_phy_ep_mon_bfm_h.aclk);
+    @(posedge pcie_phy_ep_mon_bfm_h.pclk);
   end
 endtask : run_phase
 

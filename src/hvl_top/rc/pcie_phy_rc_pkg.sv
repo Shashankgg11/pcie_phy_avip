@@ -13,8 +13,8 @@ package pcie_phy_rc_pkg;
   `include "uvm_macros.svh"
   import uvm_pkg::*;
 
-  // Import pcie_phy_globals_pkg
-  import pcie_phy_globals_pkg::*;
+  // Import pcie_phy_pkg
+  import pcie_phy_pkg::*;
 
   //-------------------------------------------------------
   // Include all other files

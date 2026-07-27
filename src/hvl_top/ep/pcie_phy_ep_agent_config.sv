@@ -62,7 +62,12 @@ class pcie_phy_ep_agent_config extends uvm_object;
   //Convenience flag read directly by run_linkwidth_start()/run_linkwidth_accept()
   //instead of every task re-deriving it from is_upstream_port
   bit responds_to_linkwidth_start = 1;
- 
+
+  //Variable: supports_upconfigure
+  //Whether this EP is willing to negotiate a link-width upconfigure (widening the link)
+  //after the initial training completes
+  bit supports_upconfigure;
+
   //-------------------------------------------------------
   // Timing knobs (override the package defaults per instance/test)
   //-------------------------------------------------------

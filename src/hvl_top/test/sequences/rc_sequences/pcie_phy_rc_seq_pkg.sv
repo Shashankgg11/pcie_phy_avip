@@ -9,7 +9,7 @@ package pcie_phy_rc_seq_pkg;
 
   `include "uvm_macros.svh"
   import uvm_pkg::*;
-  import pcie_phy_globals_pkg::*;
+  import pcie_phy_pkg::*;
   import pcie_phy_rc_pkg::*;
 
   `include "pcie_phy_rc_detect_seq.sv"

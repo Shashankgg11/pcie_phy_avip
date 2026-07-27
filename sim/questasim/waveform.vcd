@@ -1,0 +1,21 @@
+$date
+	Sun Jul 26 22:43:06 2026
+$end
+$version
+	QuestaSim Version 10.6c
+$end
+$timescale
+	1ps
+$end
+
+$scope module hdl_top $end
+$var reg 1 ! ref_clk $end
+$var reg 1 " d_clk $end
+$var reg 1 # rst_n $end
+
+$scope module pcie_phy_rc_agent_bfm_h $end
+$var parameter 32 $ RC_ID $end
+$upscope $end
+
+$scope module pcie_phy_ep_agent_bfm_h $end
+$var parameter 32 % EP_ID $end

@@ -5,14 +5,21 @@
 //  Class: pcie_phy_scoreboard
 // Cross-checks RC and EP LTSSM state transitions / Ordered Set fields against each other
 //--------------------------------------------------------------------------------------------
+//A plain uvm_analysis_imp requires its implementation class to have exactly one method
+//named write(T). This scoreboard needs two different write methods (one per tx type), so
+//it uses the suffixed uvm_analysis_imp_decl macro instead - each declared suffix generates
+//a uvm_analysis_imp<suffix> #(T, IMP) class whose write(T) calls IMP's write<suffix>(T).
+`uvm_analysis_imp_decl(_rc)
+`uvm_analysis_imp_decl(_ep)
+
 class pcie_phy_scoreboard extends uvm_scoreboard;
   `uvm_component_utils(pcie_phy_scoreboard)
 
   //Variable: pcie_phy_rc_analysis_export
-  uvm_analysis_imp #(pcie_phy_rc_tx, pcie_phy_scoreboard) pcie_phy_rc_analysis_export;
+  uvm_analysis_imp_rc #(pcie_phy_rc_tx, pcie_phy_scoreboard) pcie_phy_rc_analysis_export;
 
   //Variable: pcie_phy_ep_analysis_export
-  uvm_analysis_imp #(pcie_phy_ep_tx, pcie_phy_scoreboard) pcie_phy_ep_analysis_export;
+  uvm_analysis_imp_ep #(pcie_phy_ep_tx, pcie_phy_scoreboard) pcie_phy_ep_analysis_export;
 
   //-------------------------------------------------------
   // Externally defined Tasks and Functions
@@ -20,8 +27,8 @@ class pcie_phy_scoreboard extends uvm_scoreboard;
   extern function new(string name = "pcie_phy_scoreboard", uvm_component parent = null);
   extern virtual function void build_phase(uvm_phase phase);
   extern virtual function void connect_phase(uvm_phase phase);
-  extern virtual function void write_pcie_phy_rc(pcie_phy_rc_tx t);
-  extern virtual function void write_pcie_phy_ep(pcie_phy_ep_tx t);
+  extern virtual function void write_rc(pcie_phy_rc_tx t);
+  extern virtual function void write_ep(pcie_phy_ep_tx t);
 
 endclass : pcie_phy_scoreboard
 
@@ -62,26 +69,26 @@ function void pcie_phy_scoreboard::connect_phase(uvm_phase phase);
 endfunction : connect_phase
 
 //--------------------------------------------------------------------------------------------
-// Function: write_pcie_phy_rc
+// Function: write_rc
 // <Description_here> — correlate RC-side LTSSM events against EP-side
 //
 // Parameters:
 //  t - RC transaction
 //--------------------------------------------------------------------------------------------
-function void pcie_phy_scoreboard::write_pcie_phy_rc(pcie_phy_rc_tx t);
+function void pcie_phy_scoreboard::write_rc(pcie_phy_rc_tx t);
   // TODO: LTSSM state cross-check, TS/EC field correlation
-endfunction : write_pcie_phy_rc
+endfunction : write_rc
 
 //--------------------------------------------------------------------------------------------
-// Function: write_pcie_phy_ep
+// Function: write_ep
 // <Description_here> — correlate EP-side LTSSM events against RC-side
 //
 // Parameters:
 //  t - EP transaction
 //--------------------------------------------------------------------------------------------
-function void pcie_phy_scoreboard::write_pcie_phy_ep(pcie_phy_ep_tx t);
+function void pcie_phy_scoreboard::write_ep(pcie_phy_ep_tx t);
   // TODO: LTSSM state cross-check, TS/EC field correlation
-endfunction : write_pcie_phy_ep
+endfunction : write_ep
 
 
 `endif

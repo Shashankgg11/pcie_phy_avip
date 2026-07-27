@@ -45,8 +45,11 @@ class pcie_phy_rc_agent_config extends uvm_object;
     //What the RC proposes for actual data transfer once L0 is reached, subject to
   //partner negotiation and the GEN6-mandatory override
   data_transfer_mode_e preferred_transfer_mode = FLIT_MODE;
- 
- 
+
+  //Variable: use_modified_ts1_ts2_ordered_set
+  //Test-level override to force Modified TS1/TS2 Ordered-Set usage from the start
+  bit use_modified_ts1_ts2_ordered_set;
+
   //-------------------------------------------------------
   // RC-specific role behavior
   //-------------------------------------------------------

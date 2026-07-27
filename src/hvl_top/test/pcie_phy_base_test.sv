@@ -48,11 +48,22 @@ endfunction : new
 //--------------------------------------------------------------------------------------------
 function void pcie_phy_base_test::build_phase(uvm_phase phase);
   super.build_phase(phase);
+  
   setup_pcie_phy_env_cfg();
-  pcie_phy_env_h = pcie_phy_env::type_id::create("pcie_phy_env_h", this);
-  uvm_config_db#(pcie_phy_env_config)::set(this, "*", "pcie_phy_env_config", pcie_phy_env_cfg_h);
-  setup_pcie_phy_rc_agent_cfg();
-  setup_pcie_phy_ep_agent_cfg();
+
+setup_pcie_phy_rc_agent_cfg();
+
+setup_pcie_phy_ep_agent_cfg();
+
+uvm_config_db#(pcie_phy_env_config)::set(
+    this,
+    "*",
+    "pcie_phy_env_config",
+    pcie_phy_env_cfg_h);
+
+pcie_phy_env_h =
+    pcie_phy_env::type_id::create("pcie_phy_env_h", this);
+
 endfunction : build_phase
 
 //--------------------------------------------------------------------------------------------
@@ -68,7 +79,17 @@ endfunction : setup_pcie_phy_env_cfg
 // <Description_here>
 //--------------------------------------------------------------------------------------------
 function void pcie_phy_base_test::setup_pcie_phy_rc_agent_cfg();
-  // TODO: create + randomize pcie_phy_rc_agent_config, set into env_cfg_h array
+  pcie_phy_env_cfg_h.pcie_phy_rc_agent_cfg_h =
+      new[pcie_phy_env_cfg_h.no_of_rc];
+
+  foreach (pcie_phy_env_cfg_h.pcie_phy_rc_agent_cfg_h[i]) begin
+
+    pcie_phy_env_cfg_h.pcie_phy_rc_agent_cfg_h[i] =
+      pcie_phy_rc_agent_config::type_id::create(
+        $sformatf("pcie_phy_rc_agent_cfg_h[%0d]", i));
+
+  end
+
 endfunction : setup_pcie_phy_rc_agent_cfg
 
 //--------------------------------------------------------------------------------------------
@@ -76,7 +97,16 @@ endfunction : setup_pcie_phy_rc_agent_cfg
 // <Description_here>
 //--------------------------------------------------------------------------------------------
 function void pcie_phy_base_test::setup_pcie_phy_ep_agent_cfg();
-  // TODO: create + randomize pcie_phy_ep_agent_config, set into env_cfg_h array
+  pcie_phy_env_cfg_h.pcie_phy_ep_agent_cfg_h =
+      new[pcie_phy_env_cfg_h.no_of_ep];
+
+  foreach (pcie_phy_env_cfg_h.pcie_phy_ep_agent_cfg_h[i]) begin
+
+    pcie_phy_env_cfg_h.pcie_phy_ep_agent_cfg_h[i] =
+      pcie_phy_ep_agent_config::type_id::create(
+      $sformatf("pcie_phy_ep_agent_cfg_h[%0d]", i));
+
+  end
 endfunction : setup_pcie_phy_ep_agent_cfg
 
 //--------------------------------------------------------------------------------------------
@@ -88,6 +118,7 @@ endfunction : setup_pcie_phy_ep_agent_cfg
 //--------------------------------------------------------------------------------------------
 function void pcie_phy_base_test::end_of_elaboration_phase(uvm_phase phase);
   super.end_of_elaboration_phase(phase);
+  uvm_top.print_topology();
 endfunction : end_of_elaboration_phase
 
 //--------------------------------------------------------------------------------------------

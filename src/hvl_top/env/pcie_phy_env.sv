@@ -54,13 +54,40 @@ endfunction : new
 function void pcie_phy_env::build_phase(uvm_phase phase);
   super.build_phase(phase);
 
-  pcie_phy_rc_agent_h = new[pcie_phy_env_cfg_h.no_of_rc];
-  foreach (pcie_phy_rc_agent_h[i])
-    pcie_phy_rc_agent_h[i] = pcie_phy_rc_agent::type_id::create($sformatf("pcie_phy_rc_agent_h[%0d]", i), this);
+  if(!uvm_config_db#(pcie_phy_env_config)::get(
+        this,
+        "",
+        "pcie_phy_env_config",
+        pcie_phy_env_cfg_h))
+begin
+  `uvm_fatal("ENV_CFG","Cannot get env config")
+end
 
-  pcie_phy_ep_agent_h = new[pcie_phy_env_cfg_h.no_of_ep];
-  foreach (pcie_phy_ep_agent_h[i])
-    pcie_phy_ep_agent_h[i] = pcie_phy_ep_agent::type_id::create($sformatf("pcie_phy_ep_agent_h[%0d]", i), this);
+  pcie_phy_rc_agent_h = new[pcie_phy_env_cfg_h.no_of_rc];
+
+foreach (pcie_phy_rc_agent_h[i]) begin
+
+  pcie_phy_rc_agent_h[i] =
+      pcie_phy_rc_agent::type_id::create(
+      $sformatf("pcie_phy_rc_agent_h[%0d]", i),
+      this);
+
+  pcie_phy_rc_agent_h[i].pcie_phy_rc_agent_cfg_h =
+      pcie_phy_env_cfg_h.pcie_phy_rc_agent_cfg_h[i];
+
+end
+    pcie_phy_ep_agent_h = new[pcie_phy_env_cfg_h.no_of_ep];
+  foreach (pcie_phy_ep_agent_h[i]) begin
+
+  pcie_phy_ep_agent_h[i] =
+      pcie_phy_ep_agent::type_id::create(
+      $sformatf("pcie_phy_ep_agent_h[%0d]", i),
+      this);
+
+  pcie_phy_ep_agent_h[i].pcie_phy_ep_agent_cfg_h =
+      pcie_phy_env_cfg_h.pcie_phy_ep_agent_cfg_h[i];
+
+end
 
   if (pcie_phy_env_cfg_h.has_virtual_seqr)
     pcie_phy_virtual_seqr_h = pcie_phy_virtual_sequencer::type_id::create("pcie_phy_virtual_seqr_h", this);

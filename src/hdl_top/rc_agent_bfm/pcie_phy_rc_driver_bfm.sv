@@ -5,11 +5,12 @@
 // Importing global package
 //-------------------------------------------------------
 import pcie_phy_pkg::*;
+import pcie_phy_rc_pkg::*;
 
 interface pcie_phy_rc_driver_bfm(input  logic pclk,
                                   input  logic preset_n,
-                                  output logic [PCIE_MAX_LANES-1:0] TX_P,
-                                  output logic [PCIE_MAX_LANES-1:0] TX_N,
+                                  output logic [PCIE_MAX_LANES-1:0] pipe_tx_p,
+                                  output logic [PCIE_MAX_LANES-1:0] pipe_tx_n
                                  );
 
   //-------------------------------------------------------
@@ -30,7 +31,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
 
   clocking rcCb @(posedge pclk);
     default input #1step output #0;
-    output TX_P, TX_N;
+    output pipe_tx_p, pipe_tx_n;
     input  preset_n;
   endclocking
 
@@ -62,8 +63,8 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
   // Task: default_values
   //-------------------------------------------------------
   task default_values();
-    rcCb.TX_P           <= '0;
-    rcCb.TX_N           <= '0;
+    rcCb.pipe_tx_p           <= '0;
+    rcCb.pipe_tx_n           <= '0;
     foreach (configured_lane_number[l]) configured_lane_number[l] = PAD_SYMBOL;
     foreach (lane_disparity[l]) lane_disparity[l] = rc_agent_cfg_h.initial_disparity;
     configured_link_number = PAD_SYMBOL;
@@ -200,7 +201,6 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
         lane_disparity[l] = next_running_disparity(encoded[l], lane_disparity[l]);
       end
 
-
       //Serialize this symbol-time's 10 bits across all active lanes, bit-aligned: every
       //lane's bit b goes out on the same clock edge. 
       for (int b = 0; b < 10; b++) begin
@@ -218,8 +218,8 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
             tx_n_bits[l] = 1'b1;
           end
         end
-        rcCb.TX_P <= tx_p_bits;
-        rcCb.TX_N <= tx_n_bits;
+        rcCb.pipe_tx_p <= tx_p_bits;
+        rcCb.pipe_tx_n <= tx_n_bits;
       end
     end
   endtask : drive_ts
@@ -236,7 +236,6 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
       lane_disparity[l] = next_running_disparity(encoded[l], lane_disparity[l]);
     end
 
-
     for (int b = 0; b < 10; b++) begin
       logic [PCIE_MAX_LANES-1:0] tx_p_bits, tx_n_bits;
       @(rcCb);
@@ -252,8 +251,8 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
           tx_n_bits[l] = 1'b1;
         end
       end
-      rcCb.TX_P <= tx_p_bits;
-      rcCb.TX_N <= tx_n_bits;
+      rcCb.pipe_tx_p <= tx_p_bits;
+      rcCb.pipe_tx_n <= tx_n_bits;
     end
   endtask : drive_idle
 

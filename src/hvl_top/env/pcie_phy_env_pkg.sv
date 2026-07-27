@@ -10,7 +10,7 @@ package pcie_phy_env_pkg;
   `include "uvm_macros.svh"
   import uvm_pkg::*;
 
-  import pcie_phy_globals_pkg::*;
+  import pcie_phy_pkg::*;
   import pcie_phy_rc_pkg::*;
   import pcie_phy_ep_pkg::*;
 

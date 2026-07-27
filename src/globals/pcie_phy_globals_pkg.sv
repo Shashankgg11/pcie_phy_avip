@@ -272,6 +272,23 @@ package pcie_phy_pkg;
     PIPE_RATE_GEN5 = 4'h4,
     PIPE_RATE_GEN6 = 4'h5
   } pipe_rate_e;
+
+  //Struct: ltssm_status_t
+  //Compact BFM->observer status word: current shadow LTSSM state plus a link-up flag.
+  //Driven by driver_bfm/monitor_bfm as an output port for scoreboard/monitor visibility.
+  typedef struct packed {
+    ltssm_state_e state;
+    logic         link_up;
+  } ltssm_status_t;
+
+  //Struct: pcie_phy_bfm_cfg_s
+  //BFM-side config struct used by rc_cfg_converter / ep_cfg_converter to pack
+  //agent_config fields (rate/lane capability) down to the pin-level driver_bfm.
+  typedef struct packed {
+    bit [6:0] supported_rates;
+    bit       flit_mode_supported;
+    bit [4:0] active_lanes;
+  } pcie_phy_bfm_cfg_s;
  
   
   //Enum: other_condition_e

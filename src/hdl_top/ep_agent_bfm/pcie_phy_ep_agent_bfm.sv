@@ -1,9 +1,11 @@
 `ifndef PCIE_PHY_EP_AGENT_BFM_INCLUDED_
 `define PCIE_PHY_EP_AGENT_BFM_INCLUDED_
 
+import pcie_phy_pkg::*;
+
 //--------------------------------------------------------------------------------------------
 // Module: pcie_phy_ep_agent_bfm
-// Instantiates the ep driver_bfm and monitor_bfm and wires them to the top-level pcie_phy_if
+// Instantiates the ep driver_bfm and monitor_bfm and wires them to this port's pcie_phy_if
 //--------------------------------------------------------------------------------------------
 module pcie_phy_ep_agent_bfm #(parameter int EP_ID = 0)(pcie_phy_if intf);
 
@@ -11,17 +13,19 @@ module pcie_phy_ep_agent_bfm #(parameter int EP_ID = 0)(pcie_phy_if intf);
   `include "uvm_macros.svh"
 
   pcie_phy_ep_driver_bfm pcie_phy_ep_drv_bfm_h (
-    .aclk(intf.aclk), .aresetn(intf.aresetn),
-    .ep_tx_symbol(intf.ep_tx_symbol), .ep_tx_electrical_idle(intf.ep_tx_electrical_idle),
-    .rc_tx_symbol(intf.rc_tx_symbol), .rc_tx_electrical_idle(intf.rc_tx_electrical_idle),
-    .ep_rx_receiver_present(intf.ep_rx_receiver_present),
-    .ep_rx_electrical_idle_exit(intf.ep_rx_electrical_idle_exit)
+    .pclk(intf.d_clk), .preset_n(intf.rst_n),
+    .pipe_tx_p(intf.TX_P[PCIE_MAX_LANES-1:0]), .pipe_tx_n(intf.TX_N[PCIE_MAX_LANES-1:0])
   );
 
   pcie_phy_ep_monitor_bfm pcie_phy_ep_mon_bfm_h (
-    .aclk(intf.aclk), .aresetn(intf.aresetn),
-    .ep_tx_symbol(intf.ep_tx_symbol), .ep_tx_electrical_idle(intf.ep_tx_electrical_idle)
+    .pclk(intf.d_clk), .preset_n(intf.rst_n),
+    .pipe_tx_p(intf.TX_P[PCIE_MAX_LANES-1:0]), .pipe_tx_n(intf.TX_N[PCIE_MAX_LANES-1:0])
   );
+
+  //Reserved/unused lanes above PCIE_MAX_LANES: pcie_phy_if's buses are a fixed 32 bits wide;
+  //tie off whatever this profile doesn't use so TX_P/TX_N are never partially undriven.
+  assign intf.TX_P[31:PCIE_MAX_LANES] = '0;
+  assign intf.TX_N[31:PCIE_MAX_LANES] = '0;
 
   initial begin
     $display("[%0t] PCIE_PHY_EP_AGENT_BFM : Instantiated - registering driver_bfm/monitor_bfm handles into config_db", $time);
