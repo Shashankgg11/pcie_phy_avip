@@ -14,7 +14,7 @@ module pcie_phy_ep_agent_bfm #(parameter int EP_ID = 0)(pcie_phy_if intf);
 
   pcie_phy_ep_driver_bfm pcie_phy_ep_drv_bfm_h (
     .pclk(intf.d_clk), .preset_n(intf.rst_n),
-    .pipe_tx_p(intf.TX_P[PCIE_MAX_LANES-1:0]), .pipe_tx_n(intf.TX_N[PCIE_MAX_LANES-1:0])
+    .RX_P(intf.TX_P[PCIE_MAX_LANES-1:0]), .RX_N(intf.TX_N[PCIE_MAX_LANES-1:0])
   );
 
   pcie_phy_ep_monitor_bfm pcie_phy_ep_mon_bfm_h (

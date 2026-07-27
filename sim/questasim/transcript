@@ -1,5 +1,5 @@
-# vsim pcie_phy_opt "+UVM_TESTNAME=pcie_phy_link_training_test" -c -do "run -all; quit -f" 
-# Start time: 22:43:05 on Jul 26,2026
+# vsim pcie_phy_opt "+UVM_TESTNAME=pcie_phy_smoke_test" -c -do "run -all; quit -f" 
+# Start time: 14:29:12 on Jul 27,2026
 # //  Questa Sim
 # //  Version 10.6c linux Jul 25 2017
 # //
@@ -20,13 +20,13 @@
 # Loading work.pcie_phy_pkg(fast)
 # Loading mtiUvm.uvm_pkg
 # Loading work.pcie_phy_ep_pkg(fast)
-# Loading work.pcie_phy_rc_driver_bfm(fast)
-# Loading work.pcie_phy_rc_monitor_bfm(fast)
-# Loading work.pcie_phy_rc_pkg(fast)
 # Loading work.pcie_phy_globals_pkg_sv_unit(fast)
 # Loading work.hdl_top(fast)
 # Loading work.pcie_phy_if(fast)
 # Loading work.pcie_phy_rc_agent_bfm(fast)
+# Loading work.pcie_phy_rc_driver_bfm(fast)
+# Loading work.pcie_phy_rc_monitor_bfm(fast)
+# Loading work.pcie_phy_rc_pkg(fast)
 # Loading work.pcie_phy_rc_driver_bfm(fast)
 # Loading work.pcie_phy_rc_monitor_bfm(fast)
 # Loading work.pcie_phy_ep_agent_bfm(fast)
@@ -64,13 +64,13 @@
 # UVM_INFO verilog_src/questa_uvm_pkg-1.2/src/questa_uvm_pkg.sv(215) @ 0: reporter [Questa UVM] QUESTA_UVM-1.2.3
 # UVM_INFO verilog_src/questa_uvm_pkg-1.2/src/questa_uvm_pkg.sv(217) @ 0: reporter [Questa UVM]  questa_uvm::init(+struct)
 # HDL_TOP
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(28) @ 0: reporter [PCIE_PHY_RC_DRIVER_BFM] PCIE_PHY_RC_DRIVER_BFM
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(29) @ 0: reporter [PCIE_PHY_RC_DRIVER_BFM] PCIE_PHY_RC_DRIVER_BFM
 # [0] RC_MONITOR_BFM : Monitor BFM Started - Capturing link activity
 # [0] PCIE_PHY_RC_AGENT_BFM : Instantiated - registering driver_bfm/monitor_bfm handles into config_db
 # UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(28) @ 0: reporter [PCIE_PHY_EP_DRIVER_BFM] PCIE_PHY_EP_DRIVER_BFM
 # [0] EP_MONITOR_BFM : Monitor BFM Started - Capturing link activity
 # [0] PCIE_PHY_EP_AGENT_BFM : Instantiated - registering driver_bfm/monitor_bfm handles into config_db
-# UVM_INFO @ 0: reporter [RNTST] Running test pcie_phy_link_training_test...
+# UVM_INFO @ 0: reporter [RNTST] Running test pcie_phy_smoke_test...
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(56) @ 0: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Got the ep driver_bfm handle from config_db
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_monitor_proxy.sv(58) @ 0: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_mon_proxy_h [pcie_phy_ep_monitor_proxy] Got the ep monitor_bfm handle from config_db
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(56) @ 0: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Got the rc driver_bfm handle from config_db
@@ -79,7 +79,7 @@
 # ---------------------------------------------------------------------------
 # Name                               Type                         Size  Value
 # ---------------------------------------------------------------------------
-# uvm_test_top                       pcie_phy_link_training_test  -     @487 
+# uvm_test_top                       pcie_phy_smoke_test          -     @487 
 #   pcie_phy_env_h                   pcie_phy_env                 -     @501 
 #     pcie_phy_ep_agent_h[0]         pcie_phy_ep_agent            -     @516 
 #       pcie_phy_ep_drv_proxy_h      pcie_phy_ep_driver_proxy     -     @656 
@@ -119,12 +119,15 @@
 #       num_last_rsps                integral                     32    'd1  
 # ---------------------------------------------------------------------------
 # 
-# UVM_INFO verilog_src/uvm-1.1d/src/base/uvm_objection.svh(1268) @ 0: reporter [TEST_DONE] 'run' phase is ready to proceed to the 'extract' phase
+# UVM_INFO ../../src/hvl_top/test//pcie_phy_smoke_test.sv(42) @ 0: uvm_test_top [pcie_phy_smoke_test] pcie_phy_smoke_test : run_phase started
+# UVM_INFO ../../src/hvl_top/test//pcie_phy_smoke_test.sv(44) @ 100000: uvm_test_top [pcie_phy_smoke_test] pcie_phy_smoke_test : LTSSM BFMs are up, no stimulus driven (smoke test)
+# UVM_INFO ../../src/hvl_top/test//pcie_phy_smoke_test.sv(46) @ 200000: uvm_test_top [pcie_phy_smoke_test] pcie_phy_smoke_test : run_phase completed successfully
+# UVM_INFO verilog_src/uvm-1.1d/src/base/uvm_objection.svh(1268) @ 200000: reporter [TEST_DONE] 'run' phase is ready to proceed to the 'extract' phase
 # 
 # --- UVM Report Summary ---
 # 
 # ** Report counts by severity
-# UVM_INFO :   11
+# UVM_INFO :   14
 # UVM_WARNING :    0
 # UVM_ERROR :    0
 # UVM_FATAL :    0
@@ -139,7 +142,8 @@
 # [pcie_phy_ep_monitor_proxy]     1
 # [pcie_phy_rc_driver_proxy]     1
 # [pcie_phy_rc_monitor_proxy]     1
+# [pcie_phy_smoke_test]     3
 # ** Note: $finish    : /tools/mentor/questasim_10.6c/questasim/linux/../verilog_src/uvm-1.1d/src/base/uvm_root.svh(430)
-#    Time: 0 ps  Iteration: 216  Instance: /hvl_top
-# End time: 22:43:06 on Jul 26,2026, Elapsed time: 0:00:01
+#    Time: 200 ns  Iteration: 54  Instance: /hvl_top
+# End time: 14:29:14 on Jul 27,2026, Elapsed time: 0:00:02
 # Errors: 0, Warnings: 0

@@ -9,8 +9,8 @@ import pcie_phy_ep_pkg::*;
 
 interface pcie_phy_ep_driver_bfm(input  logic pclk,
                                   input  logic preset_n,
-                                  output logic [PCIE_MAX_LANES-1:0] pipe_tx_p,
-                                  output logic [PCIE_MAX_LANES-1:0] pipe_tx_n
+                                  output logic [PCIE_MAX_LANES-1:0] RX_P,
+                                  output logic [PCIE_MAX_LANES-1:0] RX_N
                                  );
 
   //-------------------------------------------------------
@@ -31,7 +31,7 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
 
   clocking epCb @(posedge pclk);
     default input #1step output #0;
-    output pipe_tx_p, pipe_tx_n;
+    output RX_P, RX_N;
     input  preset_n;
   endclocking
 
@@ -63,8 +63,8 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
   // Task: default_values
   //-------------------------------------------------------
   task default_values();
-    epCb.pipe_tx_p           <= '0;
-    epCb.pipe_tx_n           <= '0;
+    epCb.RX_P           <= '0;
+    epCb.RX_N           <= '0;
     foreach (configured_lane_number[l]) configured_lane_number[l] = PAD_SYMBOL;
     foreach (lane_disparity[l]) lane_disparity[l] = ep_agent_cfg_h.initial_disparity;
     configured_link_number = PAD_SYMBOL;
@@ -75,6 +75,108 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
   endtask : default_values
 
 
+  // Task: run_detect_quiet
+  //-------------------------------------------------------
+  task run_detect_quiet(output detect_substate_e next_substate);
+
+    `uvm_info(name, "Entering Detect.Quiet", UVM_MEDIUM)
+
+    // Keep transmitter in Electrical Idle
+    epCb.RX_P <= '0;
+    epCb.RX_N <= '0;
+
+    repeat (ep_agent_cfg_h.detect_timeout_cycles) begin
+
+      @(epCb);
+
+      if (check_electrical_idle_exit_any_lane()) begin
+        `uvm_info(name, "Electrical Idle Exit detected - moving to Detect.Active", UVM_HIGH)
+        next_substate = DETECT_ACTIVE;
+        return;
+      end
+
+    end
+
+    `uvm_info(name, "Detect.Quiet timeout expired - moving to Detect.Active",UVM_HIGH)
+
+    next_substate = DETECT_ACTIVE;
+
+  endtask : run_detect_quiet
+
+  // Task: run_detect_active
+  //-------------------------------------------------------
+  task run_detect_active(output ltssm_state_e next_state);
+
+    bit [PCIE_MAX_LANES-1:0] pass1_mask;
+    bit [PCIE_MAX_LANES-1:0] pass2_mask;
+    bit [PCIE_MAX_LANES-1:0] expected_mask;
+
+    `uvm_info(name, "Entering Detect.Active", UVM_MEDIUM)
+
+    expected_mask = '0;
+    for (int lane = 0; lane < ep_agent_cfg_h.active_lanes; lane++)
+      expected_mask[lane] = 1'b1;
+
+    // First Receiver Detection
+    pass1_mask = perform_receiver_detection_all_lanes();
+
+    if (pass1_mask == '0) begin
+      `uvm_info(name, "No receiver detected - returning to Detect.Quiet",UVM_HIGH)
+      next_state = DETECT_ST;
+      return;
+    end
+
+    if (pass1_mask == expected_mask) begin
+      `uvm_info(name, "Receiver detected on all active lanes - moving to Polling",UVM_HIGH)
+      next_state = POLLING_ST;
+      return;
+    end
+
+    `uvm_info(name, "Partial receiver detection - retrying Receiver Detection", UVM_HIGH)
+
+    repeat (ep_agent_cfg_h.detect_timeout_cycles)
+      @(epCb);
+
+    // Second Receiver Detection
+    pass2_mask = perform_receiver_detection_all_lanes();
+
+    if (pass2_mask == expected_mask) begin
+      `uvm_info(name, "Receiver detected on retry - moving to Polling", UVM_HIGH)
+      next_state = POLLING_ST;
+    end
+    else begin
+      `uvm_info(name, "Receiver detection failed - returning to Detect.Quiet", UVM_HIGH)
+      next_state = DETECT_ST;
+    end
+
+  endtask : run_detect_active
+
+  // check_electrical_idle_exit_any_lane
+  // electrical part so taking assumptions 
+  //-------------------------------------------------------
+  function automatic bit check_electrical_idle_exit_any_lane();
+    return ELECTRICAL_IDLE_EXIT_ASSUMED;
+  endfunction : check_electrical_idle_exit_any_lane
+
+  // Function: perform_receiver_detection_all_lanes
+  //-------------------------------------------------------
+  function automatic bit [PCIE_MAX_LANES-1:0] perform_receiver_detection_all_lanes();
+
+    bit [PCIE_MAX_LANES-1:0] lane_mask;
+
+    lane_mask = '0;
+
+    if(!RX_DETECT_ASSUMED) return lane_mask;
+
+    for(int lane = 0; lane < ep_agent_cfg_h.active_lanes; lane++)begin
+      lane_mask[lane] = 1'b1;
+    end
+
+    `uvm_info(name, $sformatf("Receiver detected on %0d active lane(s). Mask = %0h",ep_agent_cfg_h.active_lanes, lane_mask), UVM_HIGH)
+
+    return lane_mask;
+
+  endfunction : perform_receiver_detection_all_lanes
 
   //-------------------------------------------------------
   // Function: encode_8b10b_symbol
@@ -218,8 +320,8 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
             tx_n_bits[l] = 1'b1;
           end
         end
-        epCb.pipe_tx_p <= tx_p_bits;
-        epCb.pipe_tx_n <= tx_n_bits;
+        epCb.RX_P <= tx_p_bits;
+        epCb.RX_N <= tx_n_bits;
       end
     end
   endtask : drive_ts
@@ -251,8 +353,8 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
           tx_n_bits[l] = 1'b1;
         end
       end
-      epCb.pipe_tx_p <= tx_p_bits;
-      epCb.pipe_tx_n <= tx_n_bits;
+      epCb.RX_P <= tx_p_bits;
+      epCb.RX_N <= tx_n_bits;
     end
   endtask : drive_idle
 

@@ -14,7 +14,7 @@ module pcie_phy_rc_agent_bfm #(parameter int RC_ID = 0)(pcie_phy_if intf);
 
   pcie_phy_rc_driver_bfm pcie_phy_rc_drv_bfm_h (
     .pclk(intf.d_clk), .preset_n(intf.rst_n),
-    .pipe_tx_p(intf.TX_P[PCIE_MAX_LANES-1:0]), .pipe_tx_n(intf.TX_N[PCIE_MAX_LANES-1:0])
+    .TX_P(intf.TX_P[PCIE_MAX_LANES-1:0]), .TX_N(intf.TX_N[PCIE_MAX_LANES-1:0])
   );
 
   pcie_phy_rc_monitor_bfm pcie_phy_rc_mon_bfm_h (
