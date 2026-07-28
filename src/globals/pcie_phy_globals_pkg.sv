@@ -273,6 +273,21 @@ package pcie_phy_pkg;
     PIPE_RATE_GEN6 = 4'h5
   } pipe_rate_e;
 
+  //Enum: bfm_verify_task_e
+  //Test/debug-only - selects exactly which driver_bfm task a verification sequence wants
+  //exercised next. Has no protocol meaning; it exists purely so every task implemented in
+  //rc_driver_bfm/ep_driver_bfm can be called at least once from a directed sequence, in
+  //whatever order, without needing real LTSSM stimulus to reach that state naturally.
+  typedef enum {
+    VERIFY_SEND_TS1,                    //drive_ts(OS_TS1, ...)          - rc + ep
+    VERIFY_SEND_TS2,                    //drive_ts(OS_TS2, ...)          - rc + ep
+    VERIFY_SEND_IDLE,                   //drive_idle()                   - rc + ep
+    VERIFY_CHECK_ELECTRICAL_IDLE_EXIT,  //check_electrical_idle_exit_any_lane() - ep only
+    VERIFY_PERFORM_RECEIVER_DETECTION,  //perform_receiver_detection_all_lanes() - ep only
+    VERIFY_RUN_DETECT_QUIET,            //run_detect_quiet(...)          - ep only
+    VERIFY_RUN_DETECT_ACTIVE            //run_detect_active(...)         - ep only
+  } bfm_verify_task_e;
+
   //Struct: ltssm_status_t
   //Compact BFM->observer status word: current shadow LTSSM state plus a link-up flag.
   //Driven by driver_bfm/monitor_bfm as an output port for scoreboard/monitor visibility.

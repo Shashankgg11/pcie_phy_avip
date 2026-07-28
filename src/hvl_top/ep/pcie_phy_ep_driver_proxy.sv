@@ -80,6 +80,13 @@ endfunction : connect_phase
 //  phase - uvm phase
 //--------------------------------------------------------------------------------------------
 task pcie_phy_ep_driver_proxy::run_phase(uvm_phase phase);
+  //Local captures for driver_bfm tasks/functions with output args or return values - only
+  //used by the BFM-verify path below, values aren't acted on (no protocol meaning here).
+  detect_substate_e        verify_next_substate;
+  ltssm_state_e             verify_next_state;
+  bit                       verify_ei_exit;
+  bit [PCIE_MAX_LANES-1:0]  verify_rx_mask;
+
   //Propagate the agent config into the BFM's own handle - see rc_driver_proxy for why this
   //has to happen in run_phase rather than build/connect_phase.
   pcie_phy_ep_drv_bfm_h.ep_agent_cfg_h = pcie_phy_ep_agent_cfg_h;
@@ -93,21 +100,62 @@ task pcie_phy_ep_driver_proxy::run_phase(uvm_phase phase);
                         req.target_state.name(), req.requested_gen.name(), req.requested_width.name()),
               UVM_MEDIUM)
 
-    case (req.target_state)
-      DETECT_ST, POLLING_ST, RECOVERY_ST:
-        pcie_phy_ep_drv_bfm_h.drive_ts(OS_TS1, 8'h00, 8'h00, 1'b0, 1'b0);
+    if (req.is_bfm_verify_item) begin
+      //-----------------------------------------------------------------------------------
+      // Verification path: dispatch strictly off requested_task, no protocol meaning.
+      //-----------------------------------------------------------------------------------
+      `uvm_info(get_type_name(), $sformatf("BFM-verify: exercising %s", req.requested_task.name()), UVM_LOW)
+      case (req.requested_task)
+        VERIFY_SEND_TS1:  pcie_phy_ep_drv_bfm_h.drive_ts(OS_TS1, 8'h00, 8'h00, 1'b0, 1'b0);
+        VERIFY_SEND_TS2:  pcie_phy_ep_drv_bfm_h.drive_ts(OS_TS2, 8'h00, 8'h00, 1'b0, 1'b0);
+        VERIFY_SEND_IDLE: pcie_phy_ep_drv_bfm_h.drive_idle();
 
-      CONFIG_ST:
-        pcie_phy_ep_drv_bfm_h.drive_ts(OS_TS2, 8'h00, 8'h00, 1'b0, 1'b0);
+        VERIFY_CHECK_ELECTRICAL_IDLE_EXIT: begin
+          verify_ei_exit = pcie_phy_ep_drv_bfm_h.check_electrical_idle_exit_any_lane();
+          `uvm_info(get_type_name(), $sformatf("check_electrical_idle_exit_any_lane() -> %0b", verify_ei_exit), UVM_LOW)
+        end
 
-      L0_ST, L0s_ST, L1_ST:
-        pcie_phy_ep_drv_bfm_h.drive_idle();
+        VERIFY_PERFORM_RECEIVER_DETECTION: begin
+          verify_rx_mask = pcie_phy_ep_drv_bfm_h.perform_receiver_detection_all_lanes();
+          `uvm_info(get_type_name(), $sformatf("perform_receiver_detection_all_lanes() -> %0h", verify_rx_mask), UVM_LOW)
+        end
 
-      default:
-        `uvm_warning(get_type_name(),
-                     $sformatf("No driver_bfm dispatch defined yet for target_state=%s - add a case here",
-                               req.target_state.name()))
-    endcase
+        VERIFY_RUN_DETECT_QUIET: begin
+          pcie_phy_ep_drv_bfm_h.run_detect_quiet(verify_next_substate);
+          `uvm_info(get_type_name(), $sformatf("run_detect_quiet() -> next_substate=%s", verify_next_substate.name()), UVM_LOW)
+        end
+
+        VERIFY_RUN_DETECT_ACTIVE: begin
+          pcie_phy_ep_drv_bfm_h.run_detect_active(verify_next_state);
+          `uvm_info(get_type_name(), $sformatf("run_detect_active() -> next_state=%s", verify_next_state.name()), UVM_LOW)
+        end
+
+        default:
+          `uvm_warning(get_type_name(),
+                       $sformatf("requested_task=%s has no ep driver_bfm equivalent - skipped",
+                                 req.requested_task.name()))
+      endcase
+    end
+    else begin
+      //-----------------------------------------------------------------------------------
+      // Normal path: dispatch off target_state, unchanged from before.
+      //-----------------------------------------------------------------------------------
+      case (req.target_state)
+        DETECT_ST, POLLING_ST, RECOVERY_ST:
+          pcie_phy_ep_drv_bfm_h.drive_ts(OS_TS1, 8'h00, 8'h00, 1'b0, 1'b0);
+
+        CONFIG_ST:
+          pcie_phy_ep_drv_bfm_h.drive_ts(OS_TS2, 8'h00, 8'h00, 1'b0, 1'b0);
+
+        L0_ST, L0s_ST, L1_ST:
+          pcie_phy_ep_drv_bfm_h.drive_idle();
+
+        default:
+          `uvm_warning(get_type_name(),
+                       $sformatf("No driver_bfm dispatch defined yet for target_state=%s - add a case here",
+                                 req.target_state.name()))
+      endcase
+    end
 
     seq_item_port.item_done();
   end

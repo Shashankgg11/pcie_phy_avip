@@ -11,6 +11,16 @@ class pcie_phy_rc_tx extends uvm_sequence_item;
  
   //Variable: target_state
   rand ltssm_state_e target_state;
+
+  //Variable: is_bfm_verify_item
+  //Test/debug-only. When set, the driver_proxy dispatches strictly off requested_task
+  //instead of target_state - used by BFM-exerciser verification sequences to call a
+  //specific driver_bfm task directly, regardless of LTSSM protocol ordering.
+  bit is_bfm_verify_item;
+
+  //Variable: requested_task
+  //Only meaningful when is_bfm_verify_item == 1.
+  bfm_verify_task_e requested_task;
  
   //Variable: requested_gen
   // Uses pcie_gen_e directly since the package already models speed as

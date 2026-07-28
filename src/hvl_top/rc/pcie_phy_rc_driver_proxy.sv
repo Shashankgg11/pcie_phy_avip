@@ -94,23 +94,43 @@ task pcie_phy_rc_driver_proxy::run_phase(uvm_phase phase);
                         req.target_state.name(), req.requested_gen.name(), req.requested_width.name()),
               UVM_MEDIUM)
 
-    case (req.target_state)
-      // Detect/Polling/Recovery all transmit TS1 in this simplified model - only the
-      // ordered-set ID byte differs once Configuration is reached (TS2).
-      DETECT_ST, POLLING_ST, RECOVERY_ST:
-        pcie_phy_rc_drv_bfm_h.drive_ts(OS_TS1, 8'h00, 8'h00, 1'b0, 1'b0);
+    if (req.is_bfm_verify_item) begin
+      //-----------------------------------------------------------------------------------
+      // Verification path: dispatch strictly off requested_task, no protocol meaning.
+      //-----------------------------------------------------------------------------------
+      `uvm_info(get_type_name(), $sformatf("BFM-verify: exercising %s", req.requested_task.name()), UVM_LOW)
+      case (req.requested_task)
+        VERIFY_SEND_TS1:  pcie_phy_rc_drv_bfm_h.drive_ts(OS_TS1, 8'h00, 8'h00, 1'b0, 1'b0);
+        VERIFY_SEND_TS2:  pcie_phy_rc_drv_bfm_h.drive_ts(OS_TS2, 8'h00, 8'h00, 1'b0, 1'b0);
+        VERIFY_SEND_IDLE: pcie_phy_rc_drv_bfm_h.drive_idle();
+        default:
+          `uvm_warning(get_type_name(),
+                       $sformatf("requested_task=%s has no rc driver_bfm equivalent - skipped",
+                                 req.requested_task.name()))
+      endcase
+    end
+    else begin
+      //-----------------------------------------------------------------------------------
+      // Normal path: dispatch off target_state, unchanged from before.
+      //-----------------------------------------------------------------------------------
+      case (req.target_state)
+        // Detect/Polling/Recovery all transmit TS1 in this simplified model - only the
+        // ordered-set ID byte differs once Configuration is reached (TS2).
+        DETECT_ST, POLLING_ST, RECOVERY_ST:
+          pcie_phy_rc_drv_bfm_h.drive_ts(OS_TS1, 8'h00, 8'h00, 1'b0, 1'b0);
 
-      CONFIG_ST:
-        pcie_phy_rc_drv_bfm_h.drive_ts(OS_TS2, 8'h00, 8'h00, 1'b0, 1'b0);
+        CONFIG_ST:
+          pcie_phy_rc_drv_bfm_h.drive_ts(OS_TS2, 8'h00, 8'h00, 1'b0, 1'b0);
 
-      L0_ST, L0s_ST, L1_ST:
-        pcie_phy_rc_drv_bfm_h.drive_idle();
+        L0_ST, L0s_ST, L1_ST:
+          pcie_phy_rc_drv_bfm_h.drive_idle();
 
-      default:
-        `uvm_warning(get_type_name(),
-                     $sformatf("No driver_bfm dispatch defined yet for target_state=%s - add a case here",
-                               req.target_state.name()))
-    endcase
+        default:
+          `uvm_warning(get_type_name(),
+                       $sformatf("No driver_bfm dispatch defined yet for target_state=%s - add a case here",
+                                 req.target_state.name()))
+      endcase
+    end
 
     seq_item_port.item_done();
   end

@@ -27,6 +27,7 @@ package pcie_phy_ep_seq_pkg;
   `include "pcie_phy_ep_l0p_seq.sv"
   `include "pcie_phy_ep_l0s_seq.sv"
   `include "pcie_phy_ep_l1_seq.sv"
+  `include "pcie_phy_ep_bfm_exerciser_seq.sv"
 
 endpackage : pcie_phy_ep_seq_pkg
 
