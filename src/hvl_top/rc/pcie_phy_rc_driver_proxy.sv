@@ -105,22 +105,10 @@ task pcie_phy_rc_driver_proxy::run_phase(uvm_phase phase);
       case (req.requested_task)
 
         VERIFY_SEND_TS1:
-          pcie_phy_rc_drv_bfm_h.drive_ts(
-              OS_TS1,
-              8'h00,
-              8'h00,
-              1'b0,
-              1'b0
-          );
+          pcie_phy_rc_drv_bfm_h.drive_ts(OS_TS1,8'h00,8'h00,1'b0,1'b0,2'b00,1'b0,1'b0,1'b0,1'b0,1'b0);
 
         VERIFY_SEND_TS2:
-          pcie_phy_rc_drv_bfm_h.drive_ts(
-              OS_TS2,
-              8'h00,
-              8'h00,
-              1'b0,
-              1'b0
-          );
+          pcie_phy_rc_drv_bfm_h.drive_ts(OS_TS2,8'h00,8'h00,1'b0,1'b0,2'b00,1'b0,1'b0,1'b0,1'b0,1'b0);
 
         VERIFY_SEND_IDLE:
           pcie_phy_rc_drv_bfm_h.drive_idle();
@@ -140,22 +128,10 @@ task pcie_phy_rc_driver_proxy::run_phase(uvm_phase phase);
         DETECT_ST,
         POLLING_ST,
         RECOVERY_ST:
-          pcie_phy_rc_drv_bfm_h.drive_ts(
-              OS_TS1,
-              8'h00,
-              8'h00,
-              1'b0,
-              1'b0
-          );
+          pcie_phy_rc_drv_bfm_h.drive_ts(OS_TS1,8'h00,8'h00,1'b0,1'b0,2'b00,1'b0,1'b0,1'b0,1'b0,1'b0);
 
         CONFIG_ST:
-          pcie_phy_rc_drv_bfm_h.drive_ts(
-              OS_TS2,
-              8'h00,
-              8'h00,
-              1'b0,
-              1'b0
-          );
+          pcie_phy_rc_drv_bfm_h.drive_ts(OS_TS2,8'h00,8'h00,1'b0,1'b0,2'b00,1'b0,1'b0,1'b0,1'b0,1'b0);
 
         L0_ST,
         L0s_ST,
