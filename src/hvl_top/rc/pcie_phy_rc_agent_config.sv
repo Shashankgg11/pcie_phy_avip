@@ -27,7 +27,9 @@ class pcie_phy_rc_agent_config extends uvm_object;
  
   //Widest link the RC can support
   link_width_e max_link_width = X16;
- 
+  
+  int detect_timeout_cycles = 24; 
+  int config_timeout_ts_count = 2;
   //Lanes actually driven/monitored by the RC for the current test profile
   int active_lanes = ACTIVE_LANES;
  

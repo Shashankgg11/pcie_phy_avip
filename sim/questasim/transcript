@@ -1,5 +1,5 @@
 # vsim pcie_phy_opt "+UVM_TESTNAME=pcie_phy_bfm_exerciser_test" -c -do "run -all; quit -f" 
-# Start time: 14:08:16 on Jul 31,2026
+# Start time: 23:57:46 on Aug 03,2026
 # //  Questa Sim
 # //  Version 10.6c linux Jul 25 2017
 # //
@@ -39,142 +39,59 @@
 # Loading work.pcie_phy_test_pkg(fast)
 # Loading work.hvl_top(fast)
 # Loading mtiUvm.questa_uvm_pkg(fast)
+# ** Warning: (vsim-3839) ../../src/hdl_top/hdl_top.sv(70): Variable '/hdl_top/rc_intf/TX_N', driven via a port connection, is multiply driven. See ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_agent_bfm.sv(15).
+#    Time: 0 ps  Iteration: 0  Instance: /hdl_top File: ../../src/hdl_top/hdl_top.sv
+# ** Warning: (vsim-3839) ../../src/hdl_top/hdl_top.sv(69): Variable '/hdl_top/rc_intf/TX_P', driven via a port connection, is multiply driven. See ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_agent_bfm.sv(15).
+#    Time: 0 ps  Iteration: 0  Instance: /hdl_top File: ../../src/hdl_top/hdl_top.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(152): No Default value for formal 'lane_no_per_lane' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(152): No Default value for formal 'hot_reset' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(152): No Default value for formal 'disable_link' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(152): No Default value for formal 'loopback' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(152): No Default value for formal 'no_scrambling' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(152): No Default value for formal 'elbc' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(143): No Default value for formal 'lane_no_per_lane' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(143): No Default value for formal 'hot_reset' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(143): No Default value for formal 'disable_link' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(143): No Default value for formal 'loopback' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(143): No Default value for formal 'no_scrambling' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(143): No Default value for formal 'elbc' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(117): No Default value for formal 'lane_no_per_lane' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(117): No Default value for formal 'hot_reset' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(117): No Default value for formal 'disable_link' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(117): No Default value for formal 'loopback' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(117): No Default value for formal 'no_scrambling' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(117): No Default value for formal 'elbc' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(108): No Default value for formal 'lane_no_per_lane' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(108): No Default value for formal 'hot_reset' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(108): No Default value for formal 'disable_link' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(108): No Default value for formal 'loopback' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(108): No Default value for formal 'no_scrambling' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
+# ** Error: (vsim-8268) ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(108): No Default value for formal 'elbc' in task/function drive_ts.
+#    Time: 0 ps  Iteration: 0  Region: /pcie_phy_rc_pkg::pcie_phy_rc_driver_proxy File: ../../src/hvl_top/rc/pcie_phy_rc_pkg.sv
 # Loading /tools/mentor/questasim_10.6c/questasim/uvm-1.1d/linux/uvm_dpi.so
-# run -all
-# ----------------------------------------------------------------
-# UVM-1.1d
-# (C) 2007-2013 Mentor Graphics Corporation
-# (C) 2007-2013 Cadence Design Systems, Inc.
-# (C) 2006-2013 Synopsys, Inc.
-# (C) 2011-2013 Cypress Semiconductor Corp.
-# ----------------------------------------------------------------
-# 
-#   ***********       IMPORTANT RELEASE NOTES         ************
-# 
-#   You are using a version of the UVM library that has been compiled
-#   with `UVM_NO_DEPRECATED undefined.
-#   See http://www.eda.org/svdb/view.php?id=3313 for more details.
-# 
-#   You are using a version of the UVM library that has been compiled
-#   with `UVM_OBJECT_MUST_HAVE_CONSTRUCTOR undefined.
-#   See http://www.eda.org/svdb/view.php?id=3770 for more details.
-# 
-#       (Specify +UVM_NO_RELNOTES to turn off this notice)
-# 
-# UVM_INFO verilog_src/questa_uvm_pkg-1.2/src/questa_uvm_pkg.sv(215) @ 0: reporter [Questa UVM] QUESTA_UVM-1.2.3
-# UVM_INFO verilog_src/questa_uvm_pkg-1.2/src/questa_uvm_pkg.sv(217) @ 0: reporter [Questa UVM]  questa_uvm::init(+struct)
-# HDL_TOP
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(29) @ 0: reporter [PCIE_PHY_RC_DRIVER_BFM] PCIE_PHY_RC_DRIVER_BFM
-# [0] RC_MONITOR_BFM : Monitor BFM Started - Capturing link activity
-# [0] PCIE_PHY_RC_AGENT_BFM : Instantiated - registering driver_bfm/monitor_bfm handles into config_db
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(28) @ 0: reporter [PCIE_PHY_EP_DRIVER_BFM] PCIE_PHY_EP_DRIVER_BFM
-# [0] EP_MONITOR_BFM : Monitor BFM Started - Capturing link activity
-# [0] PCIE_PHY_EP_AGENT_BFM : Instantiated - registering driver_bfm/monitor_bfm handles into config_db
-# UVM_INFO @ 0: reporter [RNTST] Running test pcie_phy_bfm_exerciser_test...
-# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(56) @ 0: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Got the ep driver_bfm handle from config_db
-# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_monitor_proxy.sv(58) @ 0: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_mon_proxy_h [pcie_phy_ep_monitor_proxy] Got the ep monitor_bfm handle from config_db
-# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(56) @ 0: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Got the rc driver_bfm handle from config_db
-# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_monitor_proxy.sv(58) @ 0: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_mon_proxy_h [pcie_phy_rc_monitor_proxy] Got the rc monitor_bfm handle from config_db
-# UVM_INFO @ 0: reporter [UVMTOP] UVM testbench topology:
-# ---------------------------------------------------------------------------
-# Name                               Type                         Size  Value
-# ---------------------------------------------------------------------------
-# uvm_test_top                       pcie_phy_bfm_exerciser_test  -     @487 
-#   pcie_phy_env_h                   pcie_phy_env                 -     @501 
-#     pcie_phy_ep_agent_h[0]         pcie_phy_ep_agent            -     @516 
-#       pcie_phy_ep_drv_proxy_h      pcie_phy_ep_driver_proxy     -     @656 
-#         rsp_port                   uvm_analysis_port            -     @671 
-#         seq_item_port              uvm_seq_item_pull_port       -     @663 
-#       pcie_phy_ep_ltssm_seqr_h     pcie_phy_ep_ltssm_sequencer  -     @679 
-#         rsp_export                 uvm_analysis_export          -     @686 
-#         seq_item_export            uvm_seq_item_pull_imp        -     @780 
-#         arbitration_queue          array                        0     -    
-#         lock_queue                 array                        0     -    
-#         num_last_reqs              integral                     32    'd1  
-#         num_last_rsps              integral                     32    'd1  
-#       pcie_phy_ep_mon_proxy_h      pcie_phy_ep_monitor_proxy    -     @788 
-#         ltssm_state_analysis_port  uvm_analysis_port            -     @795 
-#     pcie_phy_rc_agent_h[0]         pcie_phy_rc_agent            -     @509 
-#       pcie_phy_rc_drv_proxy_h      pcie_phy_rc_driver_proxy     -     @811 
-#         rsp_port                   uvm_analysis_port            -     @826 
-#         seq_item_port              uvm_seq_item_pull_port       -     @818 
-#       pcie_phy_rc_ltssm_seqr_h     pcie_phy_rc_ltssm_sequencer  -     @834 
-#         rsp_export                 uvm_analysis_export          -     @841 
-#         seq_item_export            uvm_seq_item_pull_imp        -     @935 
-#         arbitration_queue          array                        0     -    
-#         lock_queue                 array                        0     -    
-#         num_last_reqs              integral                     32    'd1  
-#         num_last_rsps              integral                     32    'd1  
-#       pcie_phy_rc_mon_proxy_h      pcie_phy_rc_monitor_proxy    -     @943 
-#         ltssm_state_analysis_port  uvm_analysis_port            -     @950 
-#     pcie_phy_scoreboard_h          pcie_phy_scoreboard          -     @632 
-#       pcie_phy_ep_analysis_export  uvm_analysis_imp_ep          -     @647 
-#       pcie_phy_rc_analysis_export  uvm_analysis_imp_rc          -     @639 
-#     pcie_phy_virtual_seqr_h        pcie_phy_virtual_sequencer   -     @523 
-#       rsp_export                   uvm_analysis_export          -     @530 
-#       seq_item_export              uvm_seq_item_pull_imp        -     @624 
-#       arbitration_queue            array                        0     -    
-#       lock_queue                   array                        0     -    
-#       num_last_reqs                integral                     32    'd1  
-#       num_last_rsps                integral                     32    'd1  
-# ---------------------------------------------------------------------------
-# 
-# UVM_INFO ../../src/hvl_top/test//pcie_phy_bfm_exerciser_test.sv(53) @ 0: uvm_test_top [pcie_phy_bfm_exerciser_test] pcie_phy_bfm_exerciser_test : exercising every rc + ep driver_bfm task
-# UVM_INFO ../../src/hvl_top/test/sequences/rc_sequences//pcie_phy_rc_bfm_exerciser_seq.sv(64) @ 0: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_ltssm_seqr_h@@rc_seq_h [pcie_phy_rc_bfm_exerciser_seq] Starting pcie_phy_rc_bfm_exerciser_seq
-# UVM_INFO ../../src/hvl_top/test/sequences/ep_sequences//pcie_phy_ep_bfm_exerciser_seq.sv(71) @ 0: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_ltssm_seqr_h@@ep_seq_h [pcie_phy_ep_bfm_exerciser_seq] Starting pcie_phy_ep_bfm_exerciser_seq
-# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(101) @ 30000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=HOT_RESET_ST requested_gen=GEN6 requested_width=X4
-# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(107) @ 30000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] BFM-verify: exercising VERIFY_SEND_TS1
-# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(95) @ 30000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=L1_ST requested_gen=GEN6 requested_width=X4
-# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(101) @ 30000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] BFM-verify: exercising VERIFY_SEND_TS1
-# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(95) @ 3210000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=L1_ST requested_gen=GEN6 requested_width=X4
-# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(101) @ 3210000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] BFM-verify: exercising VERIFY_SEND_TS2
-# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(101) @ 3210000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=HOT_RESET_ST requested_gen=GEN6 requested_width=X4
-# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(107) @ 3210000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] BFM-verify: exercising VERIFY_SEND_TS2
-# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(95) @ 6410000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=DETECT_ST requested_gen=GEN6 requested_width=X4
-# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(101) @ 6410000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] BFM-verify: exercising VERIFY_SEND_IDLE
-# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(101) @ 6410000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=RECOVERY_ST requested_gen=GEN6 requested_width=X4
-# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(107) @ 6410000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] BFM-verify: exercising VERIFY_SEND_IDLE
-# UVM_INFO ../../src/hvl_top/test/sequences/rc_sequences//pcie_phy_rc_bfm_exerciser_seq.sv(70) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_ltssm_seqr_h@@rc_seq_h [pcie_phy_rc_bfm_exerciser_seq] pcie_phy_rc_bfm_exerciser_seq : all rc driver_bfm tasks exercised
-# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(101) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=DETECT_ST requested_gen=GEN6 requested_width=X4
-# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(107) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] BFM-verify: exercising VERIFY_CHECK_ELECTRICAL_IDLE_EXIT
-# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(115) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] check_electrical_idle_exit_any_lane() -> 1
-# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(101) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=L2_ST requested_gen=GEN6 requested_width=X4
-# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(107) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] BFM-verify: exercising VERIFY_PERFORM_RECEIVER_DETECTION
-# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(120) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] perform_receiver_detection_all_lanes() -> f
-# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(101) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=LOOPBACK_ST requested_gen=GEN6 requested_width=X4
-# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(107) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] BFM-verify: exercising VERIFY_RUN_DETECT_QUIET
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(82) @ 6610000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Detect.Quiet
-# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(125) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] run_detect_quiet() -> next_substate=DETECT_ACTIVE
-# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(101) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=L0_ST requested_gen=GEN6 requested_width=X4
-# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(107) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] BFM-verify: exercising VERIFY_RUN_DETECT_ACTIVE
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(114) @ 6630000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Detect.Active
-# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(130) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] run_detect_active() -> next_state=POLLING_ST
-# UVM_INFO ../../src/hvl_top/test/sequences/ep_sequences//pcie_phy_ep_bfm_exerciser_seq.sv(81) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_ltssm_seqr_h@@ep_seq_h [pcie_phy_ep_bfm_exerciser_seq] pcie_phy_ep_bfm_exerciser_seq : all ep driver_bfm tasks exercised
-# UVM_INFO ../../src/hvl_top/test//pcie_phy_bfm_exerciser_test.sv(65) @ 6830000: uvm_test_top [pcie_phy_bfm_exerciser_test] pcie_phy_bfm_exerciser_test : done
-# UVM_INFO verilog_src/uvm-1.1d/src/base/uvm_objection.svh(1268) @ 6830000: reporter [TEST_DONE] 'run' phase is ready to proceed to the 'extract' phase
-# 
-# --- UVM Report Summary ---
-# 
-# ** Report counts by severity
-# UVM_INFO :   43
-# UVM_WARNING :    0
-# UVM_ERROR :    0
-# UVM_FATAL :    0
-# ** Report counts by id
-# [PCIE_PHY_EP_DRIVER_BFM]     3
-# [PCIE_PHY_RC_DRIVER_BFM]     1
-# [Questa UVM]     2
-# [RNTST]     1
-# [TEST_DONE]     1
-# [UVMTOP]     1
-# [pcie_phy_bfm_exerciser_test]     2
-# [pcie_phy_ep_bfm_exerciser_seq]     2
-# [pcie_phy_ep_driver_proxy]    19
-# [pcie_phy_ep_monitor_proxy]     1
-# [pcie_phy_rc_bfm_exerciser_seq]     2
-# [pcie_phy_rc_driver_proxy]     7
-# [pcie_phy_rc_monitor_proxy]     1
-# ** Note: $finish    : /tools/mentor/questasim_10.6c/questasim/linux/../verilog_src/uvm-1.1d/src/base/uvm_root.svh(430)
-#    Time: 6830 ns  Iteration: 54  Instance: /hvl_top
-# End time: 14:08:17 on Jul 31,2026, Elapsed time: 0:00:01
-# Errors: 0, Warnings: 0
+# Error loading design
+# End time: 23:57:47 on Aug 03,2026, Elapsed time: 0:00:01
+# Errors: 24, Warnings: 2

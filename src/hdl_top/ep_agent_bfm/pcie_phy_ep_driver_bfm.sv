@@ -619,7 +619,122 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
         return 1'b0;
     return 1'b1;
   endfunction : detect_lane_reversal
-          
+
+  //-------------------------------------------------------
+  // ADDED - Task: run_polling_active
+  // Spec 4.2.7.2.1. Ported from RC's Polling.Active, but rewritten in EP's own
+  // fork/join_none + output-argument convention (matching run_linkwidth_start/
+  // accept above) instead of RC's persistent-variable style, and made genuinely
+  // functional: ts1_tx_count/consec_rx_match_cnt are both driven by real receive_ts
+  // decode rather than referencing counters that are never incremented.
+  //-------------------------------------------------------
+  task automatic run_polling_active(output polling_substate_e next_polling_substate,
+                                     output ltssm_state_e      next_state);
+    ts_ordered_set_bytes_t rx_bytes;
+    bit [7:0]               rx_lane_number [0:PCIE_MAX_LANES-1];
+    bit                     rx_valid;
+    int unsigned            consec_rx_match_cnt;
+    time                    start_time;
+
+    `uvm_info(name, "Entering Polling.Active", UVM_MEDIUM)
+
+    ts1_tx_count        = 0;
+    consec_rx_match_cnt = 0;
+    start_time          = $time;
+
+    fork
+      forever begin
+        drive_ts(OS_TS1, PAD_SYMBOL, PAD_SYMBOL, 1'b0, 1'b0);
+        ts1_tx_count++;
+      end
+    join_none
+
+    forever begin
+      receive_ts(rx_bytes, rx_lane_number, rx_valid);
+
+      if (rx_valid && rx_bytes.sym6_15_identifier[0] == TS1_ID_BYTE &&
+          rx_bytes.sym1_link_number == PAD_SYMBOL &&
+          rx_lane_number[0] == PAD_SYMBOL) begin
+        consec_rx_match_cnt++;
+      end
+      else begin
+        consec_rx_match_cnt = 0;
+      end
+
+      if (ts1_tx_count >= TS1_1024_COUNT && consec_rx_match_cnt >= CONSEC_TS_COUNT) begin
+        `uvm_info(name, "Polling.Active complete - advancing to Polling.Configuration", UVM_HIGH)
+        disable fork;
+        next_polling_substate = POLLING_CONFIG;
+        next_state             = POLLING_ST;
+        return;
+      end
+
+      if (($time - start_time) >= (POLLING_TIMEOUT_MS * 1ms)) begin
+        `uvm_info(name, "Polling.Active timeout - returning to Detect", UVM_HIGH)
+        disable fork;
+        next_state = DETECT_ST;
+        return;
+      end
+    end
+  endtask : run_polling_active
+
+  //-------------------------------------------------------
+  // ADDED - Task: run_polling_configuration
+  // Spec 4.2.7.2.3. Same conventions as run_polling_active above.
+  //-------------------------------------------------------
+  task automatic run_polling_configuration(output polling_substate_e next_polling_substate,
+                                            output ltssm_state_e      next_state);
+    ts_ordered_set_bytes_t rx_bytes;
+    bit [7:0]               rx_lane_number [0:PCIE_MAX_LANES-1];
+    bit                     rx_valid;
+    bit                     first_ts2_received;
+    int unsigned            consec_rx_match_cnt;
+    time                    start_time;
+
+    `uvm_info(name, "Entering Polling.Configuration", UVM_MEDIUM)
+
+    ts2_tx_count_complete = 0;
+    first_ts2_received     = 1'b0;
+    consec_rx_match_cnt    = 0;
+    start_time             = $time;
+
+    fork
+      forever begin
+        drive_ts(OS_TS2, PAD_SYMBOL, PAD_SYMBOL, 1'b0, 1'b0);
+        if (first_ts2_received) ts2_tx_count_complete++;
+      end
+    join_none
+
+    forever begin
+      receive_ts(rx_bytes, rx_lane_number, rx_valid);
+
+      if (rx_valid && rx_bytes.sym6_15_identifier[0] == TS2_ID_BYTE &&
+          rx_bytes.sym1_link_number == PAD_SYMBOL &&
+          rx_lane_number[0] == PAD_SYMBOL) begin
+        if (!first_ts2_received) first_ts2_received = 1'b1;
+        consec_rx_match_cnt++;
+      end
+      else begin
+        consec_rx_match_cnt = 0;
+      end
+
+      if (ts2_tx_count_complete >= MIN_TS2_TX_COMPLETE &&
+          consec_rx_match_cnt   >= CONSEC_TS2_COMPLETE) begin
+        `uvm_info(name, "Polling.Configuration complete - advancing to Configuration", UVM_HIGH)
+        disable fork;
+        next_state = CONFIG_ST;
+        return;
+      end
+
+      if (($time - start_time) >= (2 * POLLING_TIMEOUT_MS * 1ms)) begin
+        `uvm_info(name, "Polling.Configuration timeout - returning to Detect", UVM_HIGH)
+        disable fork;
+        next_state = DETECT_ST;
+        return;
+      end
+    end
+  endtask : run_polling_configuration
+
 endinterface : pcie_phy_ep_driver_bfm
 
 `endif

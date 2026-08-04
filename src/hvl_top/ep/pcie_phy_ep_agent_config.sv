@@ -15,7 +15,9 @@ class pcie_phy_ep_agent_config extends uvm_object;
   //fabric would have one of these per device)
   int ep_id;
  
-  int detect_timeout_cycles = 24; 
+  int detect_timeout_cycles = 24;
+
+  int config_timeout_ts_count = 2;  
   //-------------------------------------------------------
   // Link capability (advertised)
   //-------------------------------------------------------
