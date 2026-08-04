@@ -78,6 +78,13 @@ task pcie_phy_ep_bfm_exerciser_seq::body();
   send_task(VERIFY_RUN_DETECT_QUIET);
   send_task(VERIFY_RUN_DETECT_ACTIVE);
 
+  send_task(VERIFY_RUN_POLLING);
+
+  // Configuration State
+  send_task(VERIFY_RUN_CONFIG_LINKWIDTH_START);
+  send_task(VERIFY_RUN_CONFIG_LINKWIDTH_ACCEPT);
+  send_task(VERIFY_RUN_CONFIG_LANENUM_WAIT);
+
   `uvm_info(get_type_name(), $sformatf("%s : all ep driver_bfm tasks exercised", get_type_name()), UVM_MEDIUM)
 endtask : body
 

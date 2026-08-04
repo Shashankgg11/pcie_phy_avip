@@ -1,5 +1,5 @@
 # vsim pcie_phy_opt "+UVM_TESTNAME=pcie_phy_bfm_exerciser_test" -c -do "run -all; quit -f" 
-# Start time: 12:20:52 on Aug 04,2026
+# Start time: 14:48:43 on Aug 04,2026
 # //  Questa Sim
 # //  Version 10.6c linux Jul 25 2017
 # //
@@ -138,30 +138,66 @@
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(107) @ 6410000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] BFM-verify: exercising VERIFY_SEND_IDLE
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(96) @ 6410000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=DETECT_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(103) @ 6410000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] BFM-verify: exercising VERIFY_SEND_IDLE
-# UVM_INFO ../../src/hvl_top/test/sequences/rc_sequences//pcie_phy_rc_bfm_exerciser_seq.sv(70) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_ltssm_seqr_h@@rc_seq_h [pcie_phy_rc_bfm_exerciser_seq] pcie_phy_rc_bfm_exerciser_seq : all rc driver_bfm tasks exercised
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(101) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=DETECT_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(107) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] BFM-verify: exercising VERIFY_CHECK_ELECTRICAL_IDLE_EXIT
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(127) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] check_electrical_idle_exit_any_lane() -> 1
+# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(96) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=DISABLED_ST requested_gen=GEN6 requested_width=X4
+# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(103) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] BFM-verify: exercising VERIFY_CHECK_ELECTRICAL_IDLE_EXIT
+# UVM_WARNING ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(119) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] requested_task=VERIFY_CHECK_ELECTRICAL_IDLE_EXIT has no rc driver_bfm equivalent - skipped
+# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(96) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=L2_ST requested_gen=GEN6 requested_width=X4
+# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(103) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] BFM-verify: exercising VERIFY_PERFORM_RECEIVER_DETECTION
+# UVM_WARNING ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(119) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] requested_task=VERIFY_PERFORM_RECEIVER_DETECTION has no rc driver_bfm equivalent - skipped
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(101) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=L2_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(107) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] BFM-verify: exercising VERIFY_PERFORM_RECEIVER_DETECTION
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(132) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] perform_receiver_detection_all_lanes() -> f
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(101) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=LOOPBACK_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(107) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] BFM-verify: exercising VERIFY_RUN_DETECT_QUIET
 # UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(386) @ 6610000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Detect.Quiet
+# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(96) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=L2_ST requested_gen=GEN6 requested_width=X4
+# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(103) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] BFM-verify: exercising VERIFY_RUN_DETECT_QUIET
+# UVM_WARNING ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(119) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] requested_task=VERIFY_RUN_DETECT_QUIET has no rc driver_bfm equivalent - skipped
+# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(96) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=DISABLED_ST requested_gen=GEN6 requested_width=X4
+# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(103) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] BFM-verify: exercising VERIFY_RUN_DETECT_ACTIVE
+# UVM_WARNING ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(119) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] requested_task=VERIFY_RUN_DETECT_ACTIVE has no rc driver_bfm equivalent - skipped
+# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(96) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=POLLING_ST requested_gen=GEN6 requested_width=X4
+# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(103) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] BFM-verify: exercising VERIFY_RUN_POLLING
+# UVM_WARNING ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(119) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] requested_task=VERIFY_RUN_POLLING has no rc driver_bfm equivalent - skipped
+# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(96) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=DISABLED_ST requested_gen=GEN6 requested_width=X4
+# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(103) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] BFM-verify: exercising VERIFY_RUN_CONFIG_LINKWIDTH_START
+# UVM_WARNING ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(119) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] requested_task=VERIFY_RUN_CONFIG_LINKWIDTH_START has no rc driver_bfm equivalent - skipped
+# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(96) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=DISABLED_ST requested_gen=GEN6 requested_width=X4
+# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(103) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] BFM-verify: exercising VERIFY_RUN_CONFIG_LINKWIDTH_ACCEPT
+# UVM_WARNING ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(119) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] requested_task=VERIFY_RUN_CONFIG_LINKWIDTH_ACCEPT has no rc driver_bfm equivalent - skipped
+# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(96) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=L0s_ST requested_gen=GEN6 requested_width=X4
+# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(103) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] BFM-verify: exercising VERIFY_RUN_CONFIG_LANENUM_WAIT
+# UVM_WARNING ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(119) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] requested_task=VERIFY_RUN_CONFIG_LANENUM_WAIT has no rc driver_bfm equivalent - skipped
+# UVM_INFO ../../src/hvl_top/test/sequences/rc_sequences//pcie_phy_rc_bfm_exerciser_seq.sv(82) @ 6610000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_ltssm_seqr_h@@rc_seq_h [pcie_phy_rc_bfm_exerciser_seq] pcie_phy_rc_bfm_exerciser_seq : all rc driver_bfm tasks exercised
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(137) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] run_detect_quiet() -> next_substate=DETECT_ACTIVE
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(101) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=L0_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(107) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] BFM-verify: exercising VERIFY_RUN_DETECT_ACTIVE
 # UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(418) @ 6630000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Detect.Active
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(142) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] run_detect_active() -> next_state=POLLING_ST
-# UVM_INFO ../../src/hvl_top/test/sequences/ep_sequences//pcie_phy_ep_bfm_exerciser_seq.sv(81) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_ltssm_seqr_h@@ep_seq_h [pcie_phy_ep_bfm_exerciser_seq] pcie_phy_ep_bfm_exerciser_seq : all ep driver_bfm tasks exercised
+# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(101) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=DISABLED_ST requested_gen=GEN6 requested_width=X4
+# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(107) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] BFM-verify: exercising VERIFY_RUN_POLLING
+# UVM_WARNING ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(148) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] requested_task=VERIFY_RUN_POLLING has no ep driver_bfm equivalent - skipped
+# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(101) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=HOT_RESET_ST requested_gen=GEN6 requested_width=X4
+# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(107) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] BFM-verify: exercising VERIFY_RUN_CONFIG_LINKWIDTH_START
+# UVM_WARNING ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(148) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] requested_task=VERIFY_RUN_CONFIG_LINKWIDTH_START has no ep driver_bfm equivalent - skipped
+# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(101) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=L0s_ST requested_gen=GEN6 requested_width=X4
+# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(107) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] BFM-verify: exercising VERIFY_RUN_CONFIG_LINKWIDTH_ACCEPT
+# UVM_WARNING ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(148) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] requested_task=VERIFY_RUN_CONFIG_LINKWIDTH_ACCEPT has no ep driver_bfm equivalent - skipped
+# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(101) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=L2_ST requested_gen=GEN6 requested_width=X4
+# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(107) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] BFM-verify: exercising VERIFY_RUN_CONFIG_LANENUM_WAIT
+# UVM_WARNING ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(148) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] requested_task=VERIFY_RUN_CONFIG_LANENUM_WAIT has no ep driver_bfm equivalent - skipped
+# UVM_INFO ../../src/hvl_top/test/sequences/ep_sequences//pcie_phy_ep_bfm_exerciser_seq.sv(88) @ 6630000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_ltssm_seqr_h@@ep_seq_h [pcie_phy_ep_bfm_exerciser_seq] pcie_phy_ep_bfm_exerciser_seq : all ep driver_bfm tasks exercised
 # UVM_INFO ../../src/hvl_top/test//pcie_phy_bfm_exerciser_test.sv(65) @ 6830000: uvm_test_top [pcie_phy_bfm_exerciser_test] pcie_phy_bfm_exerciser_test : done
 # UVM_INFO verilog_src/uvm-1.1d/src/base/uvm_objection.svh(1268) @ 6830000: reporter [TEST_DONE] 'run' phase is ready to proceed to the 'extract' phase
 # 
 # --- UVM Report Summary ---
 # 
 # ** Report counts by severity
-# UVM_INFO :   44
-# UVM_WARNING :    0
+# UVM_INFO :   68
+# UVM_WARNING :   12
 # UVM_ERROR :    0
 # UVM_FATAL :    0
 # ** Report counts by id
@@ -174,12 +210,12 @@
 # [UVMTOP]     1
 # [pcie_phy_bfm_exerciser_test]     2
 # [pcie_phy_ep_bfm_exerciser_seq]     2
-# [pcie_phy_ep_driver_proxy]    19
+# [pcie_phy_ep_driver_proxy]    31
 # [pcie_phy_ep_monitor_proxy]     1
 # [pcie_phy_rc_bfm_exerciser_seq]     2
-# [pcie_phy_rc_driver_proxy]     7
+# [pcie_phy_rc_driver_proxy]    31
 # [pcie_phy_rc_monitor_proxy]     1
 # ** Note: $finish    : /tools/mentor/questasim_10.6c/questasim/linux/../verilog_src/uvm-1.1d/src/base/uvm_root.svh(430)
 #    Time: 6830 ns  Iteration: 54  Instance: /hvl_top
-# End time: 12:20:53 on Aug 04,2026, Elapsed time: 0:00:01
+# End time: 14:48:51 on Aug 04,2026, Elapsed time: 0:00:08
 # Errors: 0, Warnings: 2

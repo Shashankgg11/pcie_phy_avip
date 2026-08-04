@@ -67,6 +67,18 @@ task pcie_phy_rc_bfm_exerciser_seq::body();
   send_task(VERIFY_SEND_TS2);
   send_task(VERIFY_SEND_IDLE);
 
+  send_task(VERIFY_CHECK_ELECTRICAL_IDLE_EXIT);
+  send_task(VERIFY_PERFORM_RECEIVER_DETECTION);
+  send_task(VERIFY_RUN_DETECT_QUIET);
+  send_task(VERIFY_RUN_DETECT_ACTIVE);
+
+  send_task(VERIFY_RUN_POLLING);
+
+  // Configuration State
+  send_task(VERIFY_RUN_CONFIG_LINKWIDTH_START);
+  send_task(VERIFY_RUN_CONFIG_LINKWIDTH_ACCEPT);
+  send_task(VERIFY_RUN_CONFIG_LANENUM_WAIT);
+
   `uvm_info(get_type_name(), $sformatf("%s : all rc driver_bfm tasks exercised", get_type_name()), UVM_MEDIUM)
 endtask : body
 

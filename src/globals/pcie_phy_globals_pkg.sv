@@ -285,8 +285,12 @@ package pcie_phy_pkg;
     VERIFY_CHECK_ELECTRICAL_IDLE_EXIT,  //check_electrical_idle_exit_any_lane() - ep only
     VERIFY_PERFORM_RECEIVER_DETECTION,  //perform_receiver_detection_all_lanes() - ep only
     VERIFY_RUN_DETECT_QUIET,            //run_detect_quiet(...)          - ep only
-    VERIFY_RUN_DETECT_ACTIVE            //run_detect_active(...)         - ep only
-  } bfm_verify_task_e;
+    VERIFY_RUN_DETECT_ACTIVE,            //run_detect_active(...)         - ep only
+    VERIFY_RUN_POLLING,
+    VERIFY_RUN_CONFIG_LINKWIDTH_START,
+    VERIFY_RUN_CONFIG_LINKWIDTH_ACCEPT,
+    VERIFY_RUN_CONFIG_LANENUM_WAIT
+} bfm_verify_task_e;
 
   //Struct: ltssm_status_t
   //Compact BFM->observer status word: current shadow LTSSM state plus a link-up flag.
