@@ -8,9 +8,9 @@ import pcie_phy_pkg::*;
 // Passive shadow-LTSSM monitor BFM for the Upstream Port (Endpoint).
 // Samples link signals through the interface but cannot drive them.
 //--------------------------------------------------------------------------------------------
-interface pcie_phy_ep_monitor_bfm(input bit pclk, input bit preset_n,
-                                  input logic [PCIE_MAX_LANES-1:0] pipe_tx_p,
-                                  input logic [PCIE_MAX_LANES-1:0] pipe_tx_n);
+interface pcie_phy_ep_monitor_bfm(input logic pclk, input logic preset_n,
+                                  input logic [PCIE_MAX_LANES-1:0] RX_P,
+                                  input logic [PCIE_MAX_LANES-1:0] RX_N);
 
   // Proof-of-life marker — fires once at t=0 so `make simulate` shows
   // visible evidence the monitor_bfm elaborated and is alive.
