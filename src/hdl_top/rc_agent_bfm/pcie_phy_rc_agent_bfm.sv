@@ -19,8 +19,8 @@ module pcie_phy_rc_agent_bfm #(parameter int RC_ID = 0)(pcie_phy_if intf);
 
   pcie_phy_rc_monitor_bfm pcie_phy_rc_mon_bfm_h (
     .pclk(intf.pclk), .preset_n(intf.preset_n),
-    .TX_P(intf.TX_P[PCIE_MAX_LANES-1:0]), .TX_N(intf.TX_N[PCIE_MAX_LANES-1:0])
-  );
+    .RX_P(intf.RX_P[PCIE_MAX_LANES-1:0]), .RX_N(intf.RX_N[PCIE_MAX_LANES-1:0])
+);
 
   //Reserved/unused lanes above PCIE_MAX_LANES: pcie_phy_if's buses are a fixed 32 bits wide;
   //tie off whatever this profile doesn't use so TX_P/TX_N are never partially undriven.
