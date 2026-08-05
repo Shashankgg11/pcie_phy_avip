@@ -6,8 +6,8 @@
 import pcie_phy_pkg::*;
 interface pcie_phy_rc_monitor_bfm(input logic pclk,
                                    input logic preset_n,
-                                   input logic [PCIE_MAX_LANES-1:0] TX_P,
-                                   input logic [PCIE_MAX_LANES-1:0] TX_N
+                                   input logic [PCIE_MAX_LANES-1:0] RX_P,
+                                   input logic [PCIE_MAX_LANES-1:0] RX_N
                                   );
   //-------------------------------------------------------
   // Importing UVM Package
@@ -23,7 +23,7 @@ interface pcie_phy_rc_monitor_bfm(input logic pclk,
   end
   clocking rcMonCb @(posedge pclk);
     default input #1step;
-    input TX_P, TX_N;
+    input RX_P, RX_N;
     input preset_n;
   endclocking
   //-------------------------------------------------------
@@ -141,7 +141,7 @@ interface pcie_phy_rc_monitor_bfm(input logic pclk,
   task automatic sample_symbol_10b(input int lane_idx, output bit [9:0] raw_10b);
     for (int b = 0; b < 10; b++) begin
       @(rcMonCb);
-      if (rcMonCb.TX_P[lane_idx] == 1'b1 && rcMonCb.TX_N[lane_idx] == 1'b0) begin
+      if (rcMonCb.RX_P[lane_idx] == 1'b1 && rcMonCb.RX_N[lane_idx] == 1'b0) begin
         raw_10b[b] = 1'b1;
       end else begin
         raw_10b[b] = 1'b0;
@@ -312,10 +312,10 @@ interface pcie_phy_rc_monitor_bfm(input logic pclk,
          lane < rc_agent_cfg_h.active_lanes;
          lane++) begin
  
-      if ((rcMonCb.TX_P[lane] == 1'b1 &&
-           rcMonCb.TX_N[lane] == 1'b0) ||
-          (rcMonCb.TX_P[lane] == 1'b0 &&
-           rcMonCb.TX_N[lane] == 1'b1)) begin
+      if ((rcMonCb.RX_P[lane] == 1'b1 &&
+           rcMonCb.RX_N[lane] == 1'b0) ||
+          (rcMonCb.RX_P[lane] == 1'b0 &&
+           rcMonCb.RX_N[lane] == 1'b1)) begin
  
         return 1'b1;
  
@@ -342,10 +342,10 @@ interface pcie_phy_rc_monitor_bfm(input logic pclk,
          lane < rc_agent_cfg_h.active_lanes;
          lane++) begin
  
-      if ((rcMonCb.TX_P[lane] == 1'b1 &&
-           rcMonCb.TX_N[lane] == 1'b0) ||
-          (rcMonCb.TX_P[lane] == 1'b0 &&
-           rcMonCb.TX_N[lane] == 1'b1)) begin
+      if ((rcMonCb.RX_P[lane] == 1'b1 &&
+           rcMonCb.RX_N[lane] == 1'b0) ||
+          (rcMonCb.RX_P[lane] == 1'b0 &&
+           rcMonCb.RX_N[lane] == 1'b1)) begin
  
         detected_mask[lane] = 1'b1;
  
