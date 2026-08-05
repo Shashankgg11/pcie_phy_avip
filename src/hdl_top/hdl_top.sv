@@ -42,37 +42,24 @@ module hdl_top;
   //-------------------------------------------------------
   // RC / EP port interface instances
   //-------------------------------------------------------
-  //Variable: rc_intf / ep_intf
-  //Each pcie_phy_if instance is one port's own pin view (see pcie_phy_if.sv). Clock/reset
-  //are plain internal nets on the interface (no port list), driven here from outside.
+
 pcie_phy_if rc_intf(
-    .pclk(clk),
+    .pclk(pclk),
     .preset_n(preset_n)
 );
-
 pcie_phy_if ep_intf(
-    .pclk(clk),
+    .pclk(pclk),
     .preset_n(preset_n)
 );
-
-  assign rc_intf.pclk = pclk;
-  assign rc_intf.preset_n   = preset_n;
-
-  assign ep_intf.pclk = pclk;
-  assign ep_intf.preset_n   = preset_n;
+  
 
   //-------------------------------------------------------
   // Direct-connect cross-wiring: each port's RX is the partner's TX
   //-------------------------------------------------------
   assign rc_intf.RX_P = ep_intf.TX_P;
   assign rc_intf.RX_N = ep_intf.TX_N;
-  assign rc_intf.TX_P = ep_intf.RX_P;
-  assign rc_intf.TX_N = ep_intf.RX_N;
-
   assign ep_intf.RX_P = rc_intf.TX_P;
   assign ep_intf.RX_N = rc_intf.TX_N;
-  assign ep_intf.TX_P = rc_intf.RX_P;
-  assign ep_intf.TX_N = rc_intf.RX_N;
  
   //-------------------------------------------------------
   // RC / EP Agent BFM Instantiation
