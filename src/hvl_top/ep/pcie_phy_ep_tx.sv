@@ -48,6 +48,22 @@ class pcie_phy_ep_tx extends uvm_sequence_item;
 
   rand link_width_e requested_width;
  
+  //-------------------------------------------------------
+  // Variable: task_id
+  // THE real dispatch selector, used whenever is_bfm_verify_item == 0 - mirrors
+  // pcie_phy_rc_tx's identical field. Names exactly one driver_bfm task.
+  //-------------------------------------------------------
+  pcie_phy_ltssm_task_e task_id;
+
+  //-------------------------------------------------------
+  // Response fields - filled in by driver_proxy after dispatching to the real driver_bfm
+  // task. Mirrors pcie_phy_rc_tx's identical fields.
+  //-------------------------------------------------------
+  ltssm_state_e      rsp_state;
+  detect_substate_e  rsp_detect_substate;
+  polling_substate_e rsp_polling_substate;
+  config_substate_e  rsp_config_substate;
+
   //Variable: l0p_request
 
   // Requests entry into L0p (partial-width low-power link state) once L0
@@ -147,6 +163,8 @@ function void pcie_phy_ep_tx::do_print(uvm_printer printer);
   printer.print_string("requested_gen",   requested_gen.name());
 
   printer.print_string("requested_width", requested_width.name());
+  printer.print_string("task_id", task_id.name());
+  printer.print_string("rsp_state", rsp_state.name());
 
   printer.print_field ("l0p_request",     l0p_request, 1);
 

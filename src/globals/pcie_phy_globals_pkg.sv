@@ -532,6 +532,38 @@ package pcie_phy_pkg;
     10'b0011001110, 10'b1001100001, 10'b0101100001, 10'b0010011110, 10'b0011100001, 10'b0100011110, 10'b1000011110, 10'b0101001110
   };
  
+  //-------------------------------------------------------
+  // Enum: pcie_phy_ltssm_task_e
+  // REAL protocol dispatch selector - distinct from bfm_verify_task_e (which is debug-only
+  // and has no protocol meaning). One value = exactly one callable task in
+  // rc_driver_bfm/ep_driver_bfm. A per-state sequence sets exactly one of these; the
+  // driver_proxy's job is only to call the matching task and copy its real output arguments
+  // back onto the item - it never decides what runs next.
+  //-------------------------------------------------------
+  typedef enum {
+    LTSSM_TASK_DETECT_QUIET,
+    LTSSM_TASK_DETECT_ACTIVE,
+    LTSSM_TASK_POLLING_ACTIVE,
+    LTSSM_TASK_POLLING_COMPLIANCE,
+    LTSSM_TASK_POLLING_CONFIGURATION,
+    LTSSM_TASK_CFG_LINKWIDTH_START,
+    LTSSM_TASK_CFG_LINKWIDTH_ACCEPT,
+    LTSSM_TASK_CFG_LANENUM_WAIT,
+    LTSSM_TASK_CFG_LANENUM_ACCEPT,
+    LTSSM_TASK_CFG_COMPLETE,
+    LTSSM_TASK_CFG_IDLE
+  } pcie_phy_ltssm_task_e;
+
+  //-------------------------------------------------------
+  // Variable: exit_compliance_req
+  // Package-scope, mirroring the reference PCIe_MONITOR model's cur_speed pattern. NOT set by
+  // the monitor - a test/sequence-level control knob: set to 1 externally to request leaving
+  // Polling.Compliance (which otherwise has no logical exit condition of its own per spec).
+  // run_polling_compliance() checks it every loop iteration and clears it back to 0 once
+  // consumed.
+  //-------------------------------------------------------
+  bit exit_compliance_req;
+
 endpackage : pcie_phy_pkg
  
 `endif

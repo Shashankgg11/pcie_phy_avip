@@ -36,10 +36,14 @@ endfunction : new
 //  phase - uvm phase
 //--------------------------------------------------------------------------------------------
 task pcie_phy_link_training_test::run_phase(uvm_phase phase);
-  // TODO: create the matching pcie_phy_virtual_*_seq, raise/drop objection, start on
-  //       pcie_phy_env_h.pcie_phy_virtual_seqr_h
+  pcie_phy_virtual_link_training_seq vseq_h;
+
   phase.raise_objection(this);
-  // vseq_h.start(pcie_phy_env_h.pcie_phy_virtual_seqr_h);
+
+  vseq_h = pcie_phy_virtual_link_training_seq::type_id::create("vseq_h");
+  vseq_h.env_cfg_h = pcie_phy_env_h.pcie_phy_env_cfg_h;
+  vseq_h.start(pcie_phy_env_h.pcie_phy_virtual_seqr_h);
+
   phase.drop_objection(this);
 endtask : run_phase
 

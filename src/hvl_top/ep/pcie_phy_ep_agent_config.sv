@@ -41,6 +41,17 @@ class pcie_phy_ep_agent_config extends uvm_object;
  
   //Running disparity each lane's 8b/10b encoder starts at, at reset. Real hardware
     running_disparity_e initial_disparity = RD_MINUS;
+
+  //-------------------------------------------------------
+  // Default Symbol 4/5 control-bit values this EP drives in every TS unless a specific
+  // task/test overrides them - mirrors pcie_phy_rc_agent_config's identical fields.
+  //-------------------------------------------------------
+  bit       default_autonomous_change = 1'b0;
+  bit [1:0] default_elbc              = 2'b11; //Modified TS1/TS2 supported
+  bit       default_no_scrambling     = 1'b0;
+  bit       default_loopback          = 1'b0;
+  bit       default_disable_link      = 1'b0;
+  bit       default_hot_reset         = 1'b0;
  
   //Whether the EP is willing to negotiate FLIT_MODE at all. Ignored (forced 1) once
   //target_link_speed reaches FLIT_MODE_MANDATORY_FROM_GEN.

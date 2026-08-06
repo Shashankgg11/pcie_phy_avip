@@ -123,27 +123,46 @@ task pcie_phy_rc_driver_proxy::run_phase(uvm_phase phase);
     end
     else begin
 
-      case (req.target_state)
+      `uvm_info(get_type_name(), $sformatf("Real dispatch: task_id=%s", req.task_id.name()), UVM_MEDIUM)
 
-        DETECT_ST,
-        POLLING_ST,
-        RECOVERY_ST:
-          pcie_phy_rc_drv_bfm_h.drive_ts(OS_TS1,8'h00,8'h00,1'b0,1'b0,2'b00,1'b0,1'b0,1'b0,1'b0,1'b0);
+      case (req.task_id)
+        LTSSM_TASK_DETECT_QUIET:
+          pcie_phy_rc_drv_bfm_h.run_detect_quiet();
 
-        CONFIG_ST:
-          pcie_phy_rc_drv_bfm_h.drive_ts(OS_TS2,8'h00,8'h00,1'b0,1'b0,2'b00,1'b0,1'b0,1'b0,1'b0,1'b0);
+        LTSSM_TASK_DETECT_ACTIVE:
+          pcie_phy_rc_drv_bfm_h.run_detect_active();
 
-        L0_ST,
-        L0s_ST,
-        L1_ST:
-          pcie_phy_rc_drv_bfm_h.drive_idle();
+        LTSSM_TASK_POLLING_ACTIVE:
+          pcie_phy_rc_drv_bfm_h.run_polling_active();
+
+        LTSSM_TASK_POLLING_CONFIGURATION:
+          pcie_phy_rc_drv_bfm_h.run_polling_configuration();
+
+        LTSSM_TASK_CFG_LINKWIDTH_START:
+          pcie_phy_rc_drv_bfm_h.run_linkwidth_start();
+
+        LTSSM_TASK_CFG_LINKWIDTH_ACCEPT:
+          pcie_phy_rc_drv_bfm_h.run_linkwidth_accept();
+
+        // LTSSM_TASK_POLLING_COMPLIANCE, LTSSM_TASK_CFG_LANENUM_WAIT,
+        // LTSSM_TASK_CFG_LANENUM_ACCEPT, LTSSM_TASK_CFG_COMPLETE, LTSSM_TASK_CFG_IDLE:
+        //   -> uncomment once the matching task exists in pcie_phy_rc_driver_bfm.sv
+        //      (this file's driver_bfm doesn't have them yet - same gap as EP's)
 
         default:
-          `uvm_warning(get_type_name(),
-                       $sformatf("No driver_bfm dispatch defined yet for target_state=%s - add a case here",
-                                 req.target_state.name()))
-
+          `uvm_fatal(get_type_name(), $sformatf("Unhandled task_id %s", req.task_id.name()))
       endcase
+
+      //-------------------------------------------------------
+      // This driver_bfm has no output arguments - every task writes its result into shared
+      // interface variables (next_state/next_detect_substate/next_polling_substate/
+      // next_config_substate) instead. Copy them onto the item here so the sequence can read
+      // them back the same way regardless of which BFM convention is underneath.
+      //-------------------------------------------------------
+      req.rsp_state             = pcie_phy_rc_drv_bfm_h.next_state;
+      req.rsp_detect_substate   = pcie_phy_rc_drv_bfm_h.next_detect_substate;
+      req.rsp_polling_substate  = pcie_phy_rc_drv_bfm_h.next_polling_substate;
+      req.rsp_config_substate   = pcie_phy_rc_drv_bfm_h.next_config_substate;
 
     end
 

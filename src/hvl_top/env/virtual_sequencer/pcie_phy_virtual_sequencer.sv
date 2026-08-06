@@ -20,7 +20,10 @@ class pcie_phy_virtual_sequencer extends uvm_sequencer#(uvm_sequence_item);
   extern function new(string name = "pcie_phy_virtual_sequencer", uvm_component parent = null);
   extern virtual function void build_phase(uvm_phase phase);
   extern virtual function void connect_phase(uvm_phase phase);
-  extern virtual task run_phase(uvm_phase phase);
+  //run_phase intentionally NOT overridden - uvm_sequencer's own base implementation already
+  //handles both explicit seq.start(this) calls and the default_sequence config_db convention;
+  //an earlier empty override here (without calling super.run_phase()) silently broke the
+  //latter.
 
 endclass : pcie_phy_virtual_sequencer
 
@@ -57,20 +60,6 @@ endfunction : build_phase
 function void pcie_phy_virtual_sequencer::connect_phase(uvm_phase phase);
   super.connect_phase(phase);
 endfunction : connect_phase
-
-//--------------------------------------------------------------------------------------------
-// Task: run_phase
-// <Description_here>
-//
-// Parameters:
-//  phase - uvm phase
-//--------------------------------------------------------------------------------------------
-task pcie_phy_virtual_sequencer::run_phase(uvm_phase phase);
-
-  // Work here
-  // ...
-
-endtask : run_phase
 
 
 `endif

@@ -39,6 +39,22 @@ class pcie_phy_rc_agent_config extends uvm_object;
  
   //Variable: initial_disparity
   running_disparity_e initial_disparity = RD_MINUS;
+
+  //Variable: link_number
+  //RC CHOOSES this value and drives it during Configuration.Linkwidth.Start (unlike EP,
+  //which learns its Link Number from the RC instead of choosing one).
+  bit [7:0] link_number = 8'h00;
+
+  //-------------------------------------------------------
+  // Default Symbol 4/5 control-bit values this RC drives in every TS unless a specific
+  // task/test overrides them - one canonical place instead of hardcoding at every call site.
+  //-------------------------------------------------------
+  bit       default_autonomous_change = 1'b0;
+  bit [1:0] default_elbc              = 2'b11; //Modified TS1/TS2 supported
+  bit       default_no_scrambling     = 1'b0;
+  bit       default_loopback          = 1'b0;
+  bit       default_disable_link      = 1'b0;
+  bit       default_hot_reset         = 1'b0;
  
   //Whether the RC is willing to negotiate FLIT_MODE at all. Ignored (forced 1) once
   //target_link_speed reaches FLIT_MODE_MANDATORY_FROM_GEN.

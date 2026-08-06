@@ -150,34 +150,43 @@ task pcie_phy_ep_driver_proxy::run_phase(uvm_phase phase);
     end
     else begin
       //-----------------------------------------------------------------------------------
-      // Normal path: dispatch off target_state, unchanged from before.
+      // Real dispatch via task_id, matching the RC driver_proxy fix. IMPORTANT: EP's
+      // driver_bfm is currently missing run_polling_compliance,
+      // run_configuration_lanenum_wait, run_configuration_lanenum_accept,
+      // run_configuration_complete, and run_configuration_idle - EP cannot reach CFG_IDLE or
+      // L0_ST until those are added (mirroring the equivalent RC driver_bfm tasks). The case
+      // arms below are commented out rather than pointing at nonexistent tasks.
       //-----------------------------------------------------------------------------------
-      case (req.target_state)
-        DETECT_ST, POLLING_ST, RECOVERY_ST:
-          pcie_phy_ep_drv_bfm_h.drive_ts(
-    OS_TS1,
-    8'h00,
-    8'h00,
-    1'b0,
-    1'b0
-);
+      `uvm_info(get_type_name(), $sformatf("Real dispatch: task_id=%s", req.task_id.name()), UVM_MEDIUM)
 
-        CONFIG_ST:
-          pcie_phy_ep_drv_bfm_h.drive_ts(
-    OS_TS2,
-    8'h00,
-    8'h00,
-    1'b0,
-    1'b0
-);
+      case (req.task_id)
+        LTSSM_TASK_DETECT_QUIET:
+          pcie_phy_ep_drv_bfm_h.run_detect_quiet(req.rsp_detect_substate);
 
-        L0_ST, L0s_ST, L1_ST:
-          pcie_phy_ep_drv_bfm_h.drive_idle();
+        LTSSM_TASK_DETECT_ACTIVE:
+          pcie_phy_ep_drv_bfm_h.run_detect_active(req.rsp_state);
+
+        LTSSM_TASK_POLLING_ACTIVE:
+          pcie_phy_ep_drv_bfm_h.run_polling_active(req.rsp_polling_substate, req.rsp_state);
+
+        LTSSM_TASK_POLLING_CONFIGURATION:
+          pcie_phy_ep_drv_bfm_h.run_polling_configuration(req.rsp_polling_substate, req.rsp_state);
+
+        LTSSM_TASK_CFG_LINKWIDTH_START:
+          pcie_phy_ep_drv_bfm_h.run_linkwidth_start(req.rsp_config_substate, req.rsp_state);
+
+        LTSSM_TASK_CFG_LINKWIDTH_ACCEPT:
+          pcie_phy_ep_drv_bfm_h.run_linkwidth_accept(req.rsp_config_substate, req.rsp_state);
+
+        // LTSSM_TASK_POLLING_COMPLIANCE,
+        // LTSSM_TASK_CFG_LANENUM_WAIT, LTSSM_TASK_CFG_LANENUM_ACCEPT,
+        // LTSSM_TASK_CFG_COMPLETE, LTSSM_TASK_CFG_IDLE:
+        //   -> uncomment once the matching task exists in pcie_phy_ep_driver_bfm.sv
 
         default:
-          `uvm_warning(get_type_name(),
-                       $sformatf("No driver_bfm dispatch defined yet for target_state=%s - add a case here",
-                                 req.target_state.name()))
+          `uvm_error(get_type_name(),
+                     $sformatf("task_id=%s has no ep driver_bfm task yet - add it to pcie_phy_ep_driver_bfm.sv first",
+                               req.task_id.name()))
       endcase
     end
 
