@@ -149,13 +149,7 @@ task pcie_phy_ep_driver_proxy::run_phase(uvm_phase phase);
       endcase
     end
     else begin
-      //-----------------------------------------------------------------------------------
-      // Real dispatch via task_id, matching the RC driver_proxy fix. IMPORTANT: EP's
-      // driver_bfm is currently missing run_polling_compliance,
-      // run_configuration_lanenum_wait, run_configuration_lanenum_accept,
-      // run_configuration_complete, and run_configuration_idle - EP cannot reach CFG_IDLE or
-      // L0_ST until those are added (mirroring the equivalent RC driver_bfm tasks). The case
-      // arms below are commented out rather than pointing at nonexistent tasks.
+      
       //-----------------------------------------------------------------------------------
       `uvm_info(get_type_name(), $sformatf("Real dispatch: task_id=%s", req.task_id.name()), UVM_MEDIUM)
 
@@ -178,10 +172,7 @@ task pcie_phy_ep_driver_proxy::run_phase(uvm_phase phase);
         LTSSM_TASK_CFG_LINKWIDTH_ACCEPT:
           pcie_phy_ep_drv_bfm_h.run_linkwidth_accept(req.rsp_config_substate, req.rsp_state);
 
-        // LTSSM_TASK_POLLING_COMPLIANCE,
-        // LTSSM_TASK_CFG_LANENUM_WAIT, LTSSM_TASK_CFG_LANENUM_ACCEPT,
-        // LTSSM_TASK_CFG_COMPLETE, LTSSM_TASK_CFG_IDLE:
-        //   -> uncomment once the matching task exists in pcie_phy_ep_driver_bfm.sv
+        
 
         default:
           `uvm_error(get_type_name(),
