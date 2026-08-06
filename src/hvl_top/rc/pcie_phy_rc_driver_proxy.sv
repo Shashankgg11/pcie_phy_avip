@@ -144,21 +144,13 @@ task pcie_phy_rc_driver_proxy::run_phase(uvm_phase phase);
         LTSSM_TASK_CFG_LINKWIDTH_ACCEPT:
           pcie_phy_rc_drv_bfm_h.run_linkwidth_accept();
 
-        // LTSSM_TASK_POLLING_COMPLIANCE, LTSSM_TASK_CFG_LANENUM_WAIT,
-        // LTSSM_TASK_CFG_LANENUM_ACCEPT, LTSSM_TASK_CFG_COMPLETE, LTSSM_TASK_CFG_IDLE:
-        //   -> uncomment once the matching task exists in pcie_phy_rc_driver_bfm.sv
-        //      (this file's driver_bfm doesn't have them yet - same gap as EP's)
+        
 
         default:
           `uvm_fatal(get_type_name(), $sformatf("Unhandled task_id %s", req.task_id.name()))
       endcase
 
-      //-------------------------------------------------------
-      // This driver_bfm has no output arguments - every task writes its result into shared
-      // interface variables (next_state/next_detect_substate/next_polling_substate/
-      // next_config_substate) instead. Copy them onto the item here so the sequence can read
-      // them back the same way regardless of which BFM convention is underneath.
-      //-------------------------------------------------------
+      
       req.rsp_state             = pcie_phy_rc_drv_bfm_h.next_state;
       req.rsp_detect_substate   = pcie_phy_rc_drv_bfm_h.next_detect_substate;
       req.rsp_polling_substate  = pcie_phy_rc_drv_bfm_h.next_polling_substate;
