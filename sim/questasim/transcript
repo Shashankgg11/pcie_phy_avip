@@ -1,5 +1,5 @@
 # vsim pcie_phy_opt "+UVM_TESTNAME=pcie_phy_link_training_test" -c -do "run -all; quit -f" 
-# Start time: 22:29:04 on Aug 06,2026
+# Start time: 22:57:29 on Aug 06,2026
 # //  Questa Sim
 # //  Version 10.6c linux Jul 25 2017
 # //
@@ -174,5 +174,5 @@
 # [pcie_phy_virtual_link_training_seq]     2
 # ** Note: $finish    : /tools/mentor/questasim_10.6c/questasim/linux/../verilog_src/uvm-1.1d/src/base/uvm_root.svh(430)
 #    Time: 24000030 ns  Iteration: 67  Instance: /hvl_top
-# End time: 22:29:10 on Aug 06,2026, Elapsed time: 0:00:06
+# End time: 22:57:35 on Aug 06,2026, Elapsed time: 0:00:06
 # Errors: 0, Warnings: 0
