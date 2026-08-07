@@ -67,28 +67,15 @@ function void pcie_phy_ep_driver_proxy::connect_phase(uvm_phase phase);
   super.connect_phase(phase);
 endfunction : connect_phase
 
-//--------------------------------------------------------------------------------------------
-// Task: run_phase
-// Waits for reset once, then forever pulls items from the sequencer and dispatches them to
-// the matching pcie_phy_ep_drv_bfm_h task based on req.target_state. Mirrors
-// pcie_phy_rc_driver_proxy - extend the case statement here whenever a new state/task is
-// added to the driver_bfm (note: ep_driver_bfm.sv also has run_detect_quiet/run_detect_active/
-// receiver-detection tasks not dispatched here yet - those need their own state-machine loop
-// around them rather than a single call per item, so they're intentionally left out for now).
-//
-// Parameters:
-//  phase - uvm phase
-//--------------------------------------------------------------------------------------------
+
 task pcie_phy_ep_driver_proxy::run_phase(uvm_phase phase);
-  //Local captures for driver_bfm tasks/functions with output args or return values - only
-  //used by the BFM-verify path below, values aren't acted on (no protocol meaning here).
+ 
   detect_substate_e        verify_next_substate;
   ltssm_state_e             verify_next_state;
   bit                       verify_ei_exit;
   bit [PCIE_MAX_LANES-1:0]  verify_rx_mask;
 
-  //Propagate the agent config into the BFM's own handle - see rc_driver_proxy for why this
-  //has to happen in run_phase rather than build/connect_phase.
+
   pcie_phy_ep_drv_bfm_h.ep_agent_cfg_h = pcie_phy_ep_agent_cfg_h;
 
   pcie_phy_ep_drv_bfm_h.wait_for_reset();
@@ -101,9 +88,6 @@ task pcie_phy_ep_driver_proxy::run_phase(uvm_phase phase);
               UVM_MEDIUM)
 
     if (req.is_bfm_verify_item) begin
-      //-----------------------------------------------------------------------------------
-      // Verification path: dispatch strictly off requested_task, no protocol meaning.
-      //-----------------------------------------------------------------------------------
       `uvm_info(get_type_name(), $sformatf("BFM-verify: exercising %s", req.requested_task.name()), UVM_LOW)
       case(req.requested_task)
         VERIFY_SEND_TS1:pcie_phy_ep_drv_bfm_h.drive_ts(
