@@ -48,10 +48,10 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
   //-------------------------------------------------------
   // Speed-change tracking, matching the reference state table exactly:
   //   directed_speed_change  - RC sets this internally; THE trigger. EP never sets this
-  //                            independently - only RC (the initiator) decides to climb.
+  //                            independently - only RC  decides to climb.
   //   current_rate           - snapshot of current_speed at the moment L0 was entered.
   //   changed_speed_recovery / successful_speed_negotiation - both stay 0 here; only
-  //                            Recovery.Speed (not yet built) sets these once the actual
+  //                            Recovery.Speed sets these once the actual
   //                            TS1-with-speed_change-bit handshake completes.
   //-------------------------------------------------------
   bit        directed_speed_change;
