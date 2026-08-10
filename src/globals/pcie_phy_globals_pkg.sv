@@ -1,4 +1,3 @@
-
 `ifndef PCIE_PHY_PKG_INCLUDED_
 `define PCIE_PHY_PKG_INCLUDED_
  
@@ -84,6 +83,19 @@ package pcie_phy_pkg;
   parameter int FLIT_DLP_BYTES         = 6;
   parameter int FLIT_CRC_BYTES         = 8;
   parameter int FLIT_FEC_BYTES         = 6;
+
+  //Struct: flit_t
+  //Referenced in comments alongside FLIT_MODE previously but never actually defined. Simple
+  //flat layout: TLP payload + DLP (sequence number/ack fields, not broken out further here)
+  //+ CRC + FEC, matching FLIT_TLP_PAYLOAD_BYTES/FLIT_DLP_BYTES/FLIT_CRC_BYTES/FLIT_FEC_BYTES
+  //above (236+6+8+6 = 256 = FLIT_BYTES).
+  typedef struct packed {
+    logic [(FLIT_TLP_PAYLOAD_BYTES*8)-1:0] tlp_payload;
+    logic [(FLIT_DLP_BYTES*8)-1:0]         dlp;
+    logic [(FLIT_CRC_BYTES*8)-1:0]         crc;
+    logic [(FLIT_FEC_BYTES*8)-1:0]         fec;
+  } flit_t;
+
  
   //-------------------------------------------------------
   // Gen6 reference profile constants (x4 link, Gen6 capability advertised while
@@ -130,6 +142,15 @@ package pcie_phy_pkg;
   //Fixed step order the LTSSM walks through Recovery to reach GEN6 from GEN1.
   typedef pcie_gen_e speed_sequence_t [0:5];
   parameter speed_sequence_t SPEED_UPGRADE_SEQUENCE = '{GEN1, GEN2, GEN3, GEN4, GEN5, GEN6};
+
+  //Parameter: FLIT_MODE_MANDATORY_FROM_GEN
+  //Referenced in comments near data_transfer_mode_e for a while but never actually defined
+  //until now. FLIT Mode is mandatory from GEN6 onward.
+  parameter pcie_gen_e FLIT_MODE_MANDATORY_FROM_GEN = GEN6;
+
+  //Parameter: EQ_REQUIRED_MIN_GEN
+  //Minimum speed at which link equalization becomes a real, required part of Recovery.
+  parameter pcie_gen_e EQ_REQUIRED_MIN_GEN = GEN3;
  
   //Enum: link_width_e
   //Negotiated link width
@@ -564,7 +585,28 @@ package pcie_phy_pkg;
   //-------------------------------------------------------
   bit exit_compliance_req;
 
+  //-------------------------------------------------------
+  // Variable: recovery_request
+  // Same pattern as exit_compliance_req. A test/sequence sets this to 1 externally to force
+  // L0 -> Recovery (directed retrain). run_l0() checks it every loop iteration and clears it
+  // back to 0 once consumed.
+  //-------------------------------------------------------
+  bit recovery_request;
+
+  //Enum: recovery_reason_e
+  //Published by run_l0() alongside next_state=RECOVERY_ST so the caller (and any log/coverage
+  //consumer) knows WHY Recovery was entered - real PCIe hardware distinguishes these too, not
+  //just "we're in Recovery."
+  typedef enum {
+    RECOVERY_REASON_NONE,
+    RECOVERY_REASON_SPEED_CHANGE,     //current_speed != target_link_speed
+    RECOVERY_REASON_DIRECTED,         //recovery_request flag set externally
+    RECOVERY_REASON_ERROR_THRESHOLD,  //too many consecutive receive errors in L0
+    RECOVERY_REASON_IDLE_TIMEOUT,     //no legitimate Idle seen from partner for too long
+    RECOVERY_REASON_PARTNER_INITIATED //saw a qualified real TS1 arrive while still in L0 -
+                                       //the partner already left L0 on its own, so we follow
+  } recovery_reason_e;
+
 endpackage : pcie_phy_pkg
  
 `endif
-

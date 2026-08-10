@@ -95,6 +95,12 @@ task pcie_phy_ep_driver_proxy::run_phase(uvm_phase phase);
     8'h00,
     8'h00,
     1'b0,
+    pcie_phy_ep_drv_bfm_h.ep_agent_cfg_h.default_autonomous_change,
+    pcie_phy_ep_drv_bfm_h.ep_agent_cfg_h.default_elbc,
+    pcie_phy_ep_drv_bfm_h.ep_agent_cfg_h.default_no_scrambling,
+    pcie_phy_ep_drv_bfm_h.ep_agent_cfg_h.default_loopback,
+    pcie_phy_ep_drv_bfm_h.ep_agent_cfg_h.default_disable_link,
+    pcie_phy_ep_drv_bfm_h.ep_agent_cfg_h.default_hot_reset,
     1'b0
 );
         VERIFY_SEND_TS2:pcie_phy_ep_drv_bfm_h.drive_ts(
@@ -102,6 +108,12 @@ task pcie_phy_ep_driver_proxy::run_phase(uvm_phase phase);
     8'h00,
     8'h00,
     1'b0,
+    pcie_phy_ep_drv_bfm_h.ep_agent_cfg_h.default_autonomous_change,
+    pcie_phy_ep_drv_bfm_h.ep_agent_cfg_h.default_elbc,
+    pcie_phy_ep_drv_bfm_h.ep_agent_cfg_h.default_no_scrambling,
+    pcie_phy_ep_drv_bfm_h.ep_agent_cfg_h.default_loopback,
+    pcie_phy_ep_drv_bfm_h.ep_agent_cfg_h.default_disable_link,
+    pcie_phy_ep_drv_bfm_h.ep_agent_cfg_h.default_hot_reset,
     1'b0
 );
         VERIFY_SEND_IDLE:pcie_phy_ep_drv_bfm_h.drive_idle();

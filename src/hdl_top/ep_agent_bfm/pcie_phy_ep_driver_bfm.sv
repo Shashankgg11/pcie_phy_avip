@@ -55,6 +55,12 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
   running_disparity_e rx_lane_disparity [0:PCIE_MAX_LANES-1];
 
   //-------------------------------------------------------
+  // Variable: symbol_lock_acquired
+  // Real symbol/bit-boundary alignment - mirrors pcie_phy_rc_driver_bfm's identical fix.
+  //-------------------------------------------------------
+  bit symbol_lock_acquired;
+
+  //-------------------------------------------------------
   // Task: wait_for_reset
   //-------------------------------------------------------
   task wait_for_reset();
@@ -79,6 +85,7 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     ts1_tx_count             = 0;
     ts2_tx_count_complete    = 0;
     idle_tx_count            = 0;
+    symbol_lock_acquired     = 1'b0;
   endtask : default_values
 
   // Function: encode_8b10b_symbol
@@ -188,13 +195,19 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
                                  input bit [7:0]   link_no,
                                  input bit [7:0]   lane_no,
                                  input bit         speed_change_req,
+                                 input bit         autonomous_change,
+                                 input bit [1:0]   elbc,
+                                 input bit         no_scrambling,
+                                 input bit         loopback,
+                                 input bit         disable_link,
+                                 input bit         hot_reset,
                                  output ts_ordered_set_bytes_t bytes);
     sym4_data_rate_t     sym4;
     sym5_training_ctrl_t sym5;
     bit [7:0]            id_byte;
 
     sym4.speed_change        = speed_change_req;
-    sym4.autonomous_change   = 1'b0;
+    sym4.autonomous_change   = autonomous_change;
     sym4.speed_32gts         = (ep_agent_cfg_h.target_link_speed >= GEN5);
     sym4.speed_16gts         = (ep_agent_cfg_h.target_link_speed >= GEN4);
     sym4.speed_8gts          = (ep_agent_cfg_h.target_link_speed >= GEN3);
@@ -202,14 +215,14 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     sym4.speed_2p5gts        = 1'b1;
     sym4.flit_mode_supported = ep_agent_cfg_h.flit_mode_capable;
 
-    sym5.reserved_7   = 1'b0;
-    sym5.elbc_hi       = 1'b1;
-    sym5.elbc_lo       = 1'b1;
-    sym5.no_scrambling = 1'b0;
+    sym5.reserved_7    = 1'b0;
+    sym5.elbc_hi       = elbc[1];
+    sym5.elbc_lo       = elbc[0];
+    sym5.no_scrambling = no_scrambling;
     sym5.reserved_3    = 1'b0;
-    sym5.loopback      = 1'b0;
-    sym5.disable_link  = 1'b0;
-    sym5.hot_reset     = 1'b0;
+    sym5.loopback      = loopback;
+    sym5.disable_link  = disable_link;
+    sym5.hot_reset     = hot_reset;
 
     id_byte = (ts_id == OS_TS2) ? TS2_ID_BYTE : TS1_ID_BYTE;
 
@@ -231,13 +244,21 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
   // active lanes 
   //-------------------------------------------------------
   task automatic drive_ts(input os_type_e ts_id, input bit [7:0] link_no, input bit [7:0] lane_no,
-                           input bit speed_change_req, input bit lane_no_per_lane);
+                           input bit speed_change_req,
+                           input bit autonomous_change,
+                           input bit [1:0] elbc,
+                           input bit no_scrambling,
+                           input bit loopback,
+                           input bit disable_link,
+                           input bit hot_reset,
+                           input bit lane_no_per_lane);
     ts_ordered_set_bytes_t bytes;
     bit [7:0] sym_array   [0:TS_OS_LENGTH-1];
     bit       is_k_array  [0:TS_OS_LENGTH-1];
     bit [9:0] encoded     [0:PCIE_MAX_LANES-1];
 
-    build_ts_bytes(ts_id, link_no, lane_no, speed_change_req, bytes);
+    build_ts_bytes(ts_id, link_no, lane_no, speed_change_req, autonomous_change, elbc,
+                    no_scrambling, loopback, disable_link, hot_reset, bytes);
 
     sym_array[0] = bytes.sym0_com;           is_k_array[0] = 1'b1; //COM is the only K-code
     sym_array[1] = bytes.sym1_link_number;   is_k_array[1] = 1'b0;
@@ -291,18 +312,69 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
   // Number) is genuinely per-lane, so it's returned separately via rx_lane_number[]
   // rather than folded into the bytes struct's single sym2_lane_number field.
   // Lane 0 is treated as authoritative for the lane-uniform symbols (0,1,3,4,5,6-15).
-  // LIMITATION: assumes symbol-boundary alignment is already known (no comma/
-  // elastic-buffer realignment modeled) - acceptable at this logical-PHY scope.
   //-------------------------------------------------------
+  // Task: acquire_symbol_lock
+  // Real comma/symbol-boundary detection - mirrors pcie_phy_rc_driver_bfm's identical task.
+  // See that file's version for the full design rationale (bit-ordering derivation, why
+  // lane 0 alone is sufficient, why disparity is derived per-lane from which COM variant
+  // each lane's window shows).
+  //-------------------------------------------------------
+  task automatic acquire_symbol_lock(output bit [9:0] locked_code [0:PCIE_MAX_LANES-1]);
+    bit [9:0] window [0:PCIE_MAX_LANES-1];
+
+    foreach (window[l]) window[l] = '0;
+
+    forever begin
+      @(epCb);
+      for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++)
+        window[l] = {epCb.RX_P[l], window[l][9:1]};
+
+      if (window[0] inside {K_COM_P, K_COM_N}) begin
+        for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++) begin
+          locked_code[l] = window[l];
+          if (window[l] == K_COM_N)      rx_lane_disparity[l] = RD_MINUS;
+          else if (window[l] == K_COM_P) rx_lane_disparity[l] = RD_PLUS;
+        end
+        symbol_lock_acquired = 1'b1;
+        `uvm_info(name, "Symbol lock acquired (real COM found on lane 0)", UVM_MEDIUM)
+        return;
+      end
+    end
+  endtask : acquire_symbol_lock
+
   task automatic receive_ts(output ts_ordered_set_bytes_t bytes,
                              output bit [7:0]              rx_lane_number [0:PCIE_MAX_LANES-1],
                              output bit                    valid);
     bit [7:0] sym_array  [0:TS_OS_LENGTH-1];
     bit       is_k_array [0:TS_OS_LENGTH-1];
+    int       start_symbol;
 
     valid = 1'b1;
+    start_symbol = 0;
 
-    for (int s = 0; s < TS_OS_LENGTH; s++) begin
+    if (!symbol_lock_acquired) begin
+      bit [9:0] locked_code [0:PCIE_MAX_LANES-1];
+      acquire_symbol_lock(locked_code);
+
+      for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++) begin
+        bit [7:0] decoded_byte;
+        bit       decoded_is_k;
+        bit       decoded_valid;
+
+        decode_8b10b_symbol(locked_code[l], rx_lane_disparity[l],
+                             decoded_byte, decoded_is_k, decoded_valid);
+        rx_lane_disparity[l] = next_running_disparity(locked_code[l], rx_lane_disparity[l]);
+        if (!decoded_valid) valid = 1'b0;
+
+        if (l == 0) begin
+          sym_array[0]  = decoded_byte;
+          is_k_array[0] = decoded_is_k;
+        end
+      end
+      start_symbol = 1;
+    end
+
+    for (int s = start_symbol; s < TS_OS_LENGTH; s++) begin
       bit [9:0] rx_encoded [0:PCIE_MAX_LANES-1];
 
       //Sample this symbol-time's 10 bits across all active lanes, bit-aligned
@@ -509,7 +581,7 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
 
     fork
       forever drive_ts(OS_TS1, link_latched ? configured_link_number : PAD_SYMBOL,
-                        PAD_SYMBOL, 1'b0, 1'b0);
+                        PAD_SYMBOL, 1'b0, ep_agent_cfg_h.default_autonomous_change, ep_agent_cfg_h.default_elbc, ep_agent_cfg_h.default_no_scrambling, ep_agent_cfg_h.default_loopback, ep_agent_cfg_h.default_disable_link, ep_agent_cfg_h.default_hot_reset, 1'b0);
     join_none
 
     forever begin
@@ -571,7 +643,7 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     use_reversal   = 1'b0;
 
     fork
-      forever drive_ts(OS_TS1, configured_link_number, PAD_SYMBOL, 1'b0, 1'b1);
+      forever drive_ts(OS_TS1, configured_link_number, PAD_SYMBOL, 1'b0, ep_agent_cfg_h.default_autonomous_change, ep_agent_cfg_h.default_elbc, ep_agent_cfg_h.default_no_scrambling, ep_agent_cfg_h.default_loopback, ep_agent_cfg_h.default_disable_link, ep_agent_cfg_h.default_hot_reset, 1'b1);
     join_none
 
     forever begin
@@ -634,23 +706,45 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     bit [7:0]               rx_lane_number [0:PCIE_MAX_LANES-1];
     bit                     rx_valid;
     int unsigned            consec_rx_match_cnt;
+    int unsigned            rx_count_i;
     time                    start_time;
 
     `uvm_info(name, "Entering Polling.Active", UVM_MEDIUM)
 
     ts1_tx_count        = 0;
     consec_rx_match_cnt = 0;
+    rx_count_i          = 0;
     start_time          = $time;
 
     fork
       forever begin
-        drive_ts(OS_TS1, PAD_SYMBOL, PAD_SYMBOL, 1'b0, 1'b0);
+        drive_ts(OS_TS1, PAD_SYMBOL, PAD_SYMBOL, 1'b0, ep_agent_cfg_h.default_autonomous_change, ep_agent_cfg_h.default_elbc, ep_agent_cfg_h.default_no_scrambling, ep_agent_cfg_h.default_loopback, ep_agent_cfg_h.default_disable_link, ep_agent_cfg_h.default_hot_reset, 1'b0);
         ts1_tx_count++;
       end
     join_none
 
     forever begin
+      rx_count_i++;
+
       receive_ts(rx_bytes, rx_lane_number, rx_valid);
+
+      //Throttled: full detail every reception would be ~1024 lines just for this one state -
+      //print at UVM_LOW only on the first reception and every 128th after; raise verbosity
+      //to UVM_HIGH to see every single one.
+      if (rx_count_i == 1 || (rx_count_i % 128) == 0) begin
+        `uvm_info(name, $sformatf("RX TS1 #%0d: valid=%0d link=0x%0h lane=0x%0h n_fts=0x%0h data_rate=0x%0h train_ctrl=0x%0h id=0x%0h",
+                                   rx_count_i, rx_valid, rx_bytes.sym1_link_number, rx_lane_number[0],
+                                   rx_bytes.sym3_n_fts, rx_bytes.sym4_data_rate_id,
+                                   rx_bytes.sym5_training_ctrl, rx_bytes.sym6_15_identifier[0]),
+                  UVM_LOW)
+      end
+      else begin
+        `uvm_info(name, $sformatf("RX TS1 #%0d: valid=%0d link=0x%0h lane=0x%0h n_fts=0x%0h data_rate=0x%0h train_ctrl=0x%0h id=0x%0h",
+                                   rx_count_i, rx_valid, rx_bytes.sym1_link_number, rx_lane_number[0],
+                                   rx_bytes.sym3_n_fts, rx_bytes.sym4_data_rate_id,
+                                   rx_bytes.sym5_training_ctrl, rx_bytes.sym6_15_identifier[0]),
+                  UVM_HIGH)
+      end
 
       if (rx_valid && rx_bytes.sym6_15_identifier[0] == TS1_ID_BYTE &&
           rx_bytes.sym1_link_number == PAD_SYMBOL &&
@@ -700,7 +794,7 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
 
     fork
       forever begin
-        drive_ts(OS_TS2, PAD_SYMBOL, PAD_SYMBOL, 1'b0, 1'b0);
+        drive_ts(OS_TS2, PAD_SYMBOL, PAD_SYMBOL, 1'b0, ep_agent_cfg_h.default_autonomous_change, ep_agent_cfg_h.default_elbc, ep_agent_cfg_h.default_no_scrambling, ep_agent_cfg_h.default_loopback, ep_agent_cfg_h.default_disable_link, ep_agent_cfg_h.default_hot_reset, 1'b0);
         if (first_ts2_received) ts2_tx_count_complete++;
       end
     join_none
