@@ -294,19 +294,15 @@ package pcie_phy_pkg;
     PIPE_RATE_GEN6 = 4'h5
   } pipe_rate_e;
 
-  //Enum: bfm_verify_task_e
-  //Test/debug-only - selects exactly which driver_bfm task a verification sequence wants
-  //exercised next. Has no protocol meaning; it exists purely so every task implemented in
-  //rc_driver_bfm/ep_driver_bfm can be called at least once from a directed sequence, in
-  //whatever order, without needing real LTSSM stimulus to reach that state naturally.
+  
   typedef enum {
-    VERIFY_SEND_TS1,                    //drive_ts(OS_TS1, ...)          - rc + ep
-    VERIFY_SEND_TS2,                    //drive_ts(OS_TS2, ...)          - rc + ep
+    VERIFY_SEND_TS1,                    //drive_ts(OS_TS1,           - rc + ep
+    VERIFY_SEND_TS2,                    //drive_ts(OS_TS2,           - rc + ep
     VERIFY_SEND_IDLE,                   //drive_idle()                   - rc + ep
     VERIFY_CHECK_ELECTRICAL_IDLE_EXIT,  //check_electrical_idle_exit_any_lane() - ep only
     VERIFY_PERFORM_RECEIVER_DETECTION,  //perform_receiver_detection_all_lanes() - ep only
-    VERIFY_RUN_DETECT_QUIET,            //run_detect_quiet(...)          - ep only
-    VERIFY_RUN_DETECT_ACTIVE,            //run_detect_active(...)         - ep only
+    VERIFY_RUN_DETECT_QUIET,            //run_detect_quiet          - ep only
+    VERIFY_RUN_DETECT_ACTIVE,            //run_detect_active         - ep only
     VERIFY_RUN_POLLING,
     VERIFY_RUN_CONFIG_LINKWIDTH_START,
     VERIFY_RUN_CONFIG_LINKWIDTH_ACCEPT,
@@ -364,11 +360,8 @@ package pcie_phy_pkg;
     SKP_ORDERED_SET     //Periodic Flit-mode SKP Ordered Set (clock compensation)
   } flit_content_e;
  
-  //=========================================================================================
-  // STRUCTS  (all `packed` so every type here can be driven/sampled directly on an
-  //           interface or cast to/from a bit-vector)
-  //=========================================================================================
  
+
   //Struct: ts_ordered_set_t
   //Decoded TS1/TS2 Ordered-Set fields used for Link Initialization/Training and
   //speed-negotiation packet formation, common to RC and EP
@@ -553,14 +546,7 @@ package pcie_phy_pkg;
     10'b0011001110, 10'b1001100001, 10'b0101100001, 10'b0010011110, 10'b0011100001, 10'b0100011110, 10'b1000011110, 10'b0101001110
   };
  
-  //-------------------------------------------------------
-  // Enum: pcie_phy_ltssm_task_e
-  // REAL protocol dispatch selector - distinct from bfm_verify_task_e (which is debug-only
-  // and has no protocol meaning). One value = exactly one callable task in
-  // rc_driver_bfm/ep_driver_bfm. A per-state sequence sets exactly one of these; the
-  // driver_proxy's job is only to call the matching task and copy its real output arguments
-  // back onto the item - it never decides what runs next.
-  //-------------------------------------------------------
+  
   typedef enum {
     LTSSM_TASK_DETECT_QUIET,
     LTSSM_TASK_DETECT_ACTIVE,
