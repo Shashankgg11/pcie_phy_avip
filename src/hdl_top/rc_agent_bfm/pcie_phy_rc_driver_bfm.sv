@@ -348,22 +348,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
   endtask : drive_ts
 
-  //-------------------------------------------------------
-  // Task: acquire_symbol_lock
-  // Real comma/symbol-boundary detection - what receive_ts() was missing entirely before.
-  // Shifts RX_P in one bit at a time per active lane, checking after EVERY new bit whether
-  // lane 0's current 10-bit window is a genuine COM (either disparity variant - COM is
-  // unique among all 8b/10b codes, so this check alone is enough to prove real alignment,
-  // no prior disparity assumption needed). Lane 0 is the trigger; all active lanes' windows
-  // are tracked in parallel so once lock is confirmed, every lane's already-aligned symbol-0
-  // content is available immediately - no lane needs its own independent search, since this
-  // driver's own TX side serializes every lane bit-for-bit in lockstep, and the partner does
-  // the same.
-  //
-  // Once found: sets symbol_lock_acquired, and derives each lane's ACTUAL rx_lane_disparity
-  // directly from which COM variant that lane's window shows (K_COM_N implies the sender's
-  // disparity was RD_MINUS going into this symbol; K_COM_P implies RD_PLUS) - not just
-  // copied from lane 0, since each lane's disparity is tracked independently in principle.
+  
   //-------------------------------------------------------
   task automatic acquire_symbol_lock(output bit [9:0] locked_code [0:PCIE_MAX_LANES-1]);
     bit [9:0] window [0:PCIE_MAX_LANES-1];
@@ -380,11 +365,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
           locked_code[l] = window[l];
           if (window[l] == K_COM_N)      rx_lane_disparity[l] = RD_MINUS;
           else if (window[l] == K_COM_P) rx_lane_disparity[l] = RD_PLUS;
-          //else: this lane's window wasn't a valid COM even though lane 0's was - real
-          //hardware would flag this as a lane-to-lane skew/error; left as-is here (disparity
-          //unchanged) rather than guessing, since that's a genuine anomaly worth surfacing
-          //via the normal decode_8b10b_symbol() valid-check that runs right after this
-          //returns, not silently patched over here.
+          
         end
         symbol_lock_acquired = 1'b1;
         `uvm_info(name, "Symbol lock acquired (real COM found on lane 0)", UVM_MEDIUM)
