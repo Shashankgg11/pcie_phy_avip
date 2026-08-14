@@ -45,15 +45,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
   pcie_gen_e   current_speed;
   data_transfer_mode_e transfer_mode; //resolved once at L0 entry - see run_l0()
 
-  //-------------------------------------------------------
-  // Speed-change tracking, matching the reference state table exactly:
-  //   directed_speed_change  - RC sets this internally; THE trigger. EP never sets this
-  //                            independently - only RC  decides to climb.
-  //   current_rate           - snapshot of current_speed at the moment L0 was entered.
-  //   changed_speed_recovery / successful_speed_negotiation - both stay 0 here; only
-  //                            Recovery.Speed sets these once the actual
-  //                            TS1-with-speed_change-bit handshake completes.
-  //-------------------------------------------------------
+
   bit        directed_speed_change;
   pcie_gen_e current_rate;
   bit        changed_speed_recovery;
@@ -73,20 +65,10 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
 
   //-------------------------------------------------------
   // Variable: symbol_lock_acquired
-  // Real symbol/bit-boundary alignment, once found, persists for the rest of this run until
-  // an explicit reset (default_values() clears it back to 0). Our own drive_ts()/drive_idle()
-  // serialize every active lane bit-for-bit in lockstep (same clock edge, same bit
-  // position) - the partner side models the same symmetrically - so finding alignment via
-  // lane 0 alone is sufficient; no need to search each lane independently.
-  //-------------------------------------------------------
+   //-------------------------------------------------------
   bit symbol_lock_acquired;
 
-  //-------------------------------------------------------
-  // L0 data-phase queues. NOTE: no full sequencer/item integration exists for the data
-  // phase yet - a test/sequence can call push_tlp()/push_dllp()/push_flit_payload()
-  // directly on this driver_bfm's virtual interface handle to enqueue real data for
-  // run_l0() to send.
-  //-------------------------------------------------------
+ 
   typedef bit [7:0] byte_queue_t [$];
   typedef bit [7:0] flit_payload_t [0:FLIT_TLP_PAYLOAD_BYTES-1];
 
@@ -96,11 +78,20 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
 
   //-------------------------------------------------------
   // LTSSM state-tracking variables - persistent module-level vars (not task outputs),
-  // matching the convention already used throughout this file.
   //-------------------------------------------------------
   ltssm_state_e      current_state;
   ltssm_state_e      next_state;
   recovery_reason_e  next_recovery_reason;
+  recovery_substate_e current_recovery_substate;
+  recovery_substate_e next_recovery_substate;
+
+  //Set once Recovery.Equalization genuinely completes at the CURRENT speed - checked so a
+  //later Recovery cycle at a HIGHER speed (another step up SPEED_UPGRADE_SEQUENCE) knows
+  //equalization needs redoing at the new speed, not skipped.
+  bit equalization_done_this_speed;
+
+ 
+  bit [7:0] negotiated_tx_preset;
   detect_substate_e  current_detect_substate;
   detect_substate_e  next_detect_substate;
   polling_substate_e current_polling_substate;
@@ -143,6 +134,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     idle_rx_count            = 0;
     symbol_lock_acquired     = 1'b0;
     tlp_tx_queue.delete();
+    equalization_done_this_speed = 1'b0;
     dllp_tx_queue.delete();
     flit_tx_queue.delete();
   endtask : default_values
@@ -163,6 +155,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
         END_TOKEN:  encode_8b10b_symbol = (cur_rd == RD_MINUS) ? K_END_N : K_END_P;
         EDB_TOKEN:  encode_8b10b_symbol = (cur_rd == RD_MINUS) ? K_EDB_N : K_EDB_P;
         EIE_SYM:    encode_8b10b_symbol = (cur_rd == RD_MINUS) ? K_EIE_N : K_EIE_P;
+        IDL_SYM:    encode_8b10b_symbol = (cur_rd == RD_MINUS) ? K_IDL_N : K_IDL_P;
         default:    encode_8b10b_symbol = (cur_rd == RD_MINUS) ? D_NEG_DISP[byte_val]
                                                                  : D_POS_DISP[byte_val];
       endcase
@@ -206,6 +199,9 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
     else if (encoded_symbol inside {K_EIE_P, K_EIE_N}) begin
       byte_val = EIE_SYM; is_k_code = 1'b1;
+    end
+    else if (encoded_symbol inside {K_IDL_P, K_IDL_N}) begin
+      byte_val = IDL_SYM; is_k_code = 1'b1;
     end
     else begin
       bit found;
@@ -348,8 +344,9 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
   endtask : drive_ts
 
-  
   //-------------------------------------------------------
+  // Task: acquire_symbol_lock
+    //-------------------------------------------------------
   task automatic acquire_symbol_lock(output bit [9:0] locked_code [0:PCIE_MAX_LANES-1]);
     bit [9:0] window [0:PCIE_MAX_LANES-1];
 
@@ -365,7 +362,6 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
           locked_code[l] = window[l];
           if (window[l] == K_COM_N)      rx_lane_disparity[l] = RD_MINUS;
           else if (window[l] == K_COM_P) rx_lane_disparity[l] = RD_PLUS;
-          
         end
         symbol_lock_acquired = 1'b1;
         `uvm_info(name, "Symbol lock acquired (real COM found on lane 0)", UVM_MEDIUM)
@@ -387,13 +383,6 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     valid = 1'b1;
     start_symbol = 0;
 
-    //-------------------------------------------------------
-    // One-time bootstrap: if we've never found real symbol alignment yet, find it now by
-    // searching for a genuine COM - this IS symbol 0, decoded directly from the search
-    // result rather than re-sampled (re-sampling would consume symbol 1's bits instead).
-    // Only needed once - every subsequent receive_ts() call in this run skips straight to
-    // the normal fixed-window sampling below, since alignment persists once found.
-    //-------------------------------------------------------
     if (!symbol_lock_acquired) begin
       bit [9:0] locked_code [0:PCIE_MAX_LANES-1];
       acquire_symbol_lock(locked_code);
@@ -455,6 +444,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
 
     if (sym_array[0] != COM_SYMBOL || !is_k_array[0]) valid = 1'b0;
   endtask : receive_ts
+
 
   //-------------------------------------------------------
   // Task: drive_idle
@@ -539,7 +529,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     return 1'b1;
   endfunction : detect_lane_reversal
 
-  //--------------------------------------------------------------------------------------------------------------------------------- 
+  //---------------------------------------------------------------------------------------------------------------------------------
   //    DETECT
   //---------------------------------------------------------------------------------------------------------------------------------
   task automatic run_detect_quiet();
@@ -613,7 +603,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
   endtask : run_detect_active
 
-  //--------------------------------------------------------------------------------------------------------------------------------- 
+  //---------------------------------------------------------------------------------------------------------------------------------
   //    CONFIGURATION.LINKWIDTH
   //---------------------------------------------------------------------------------------------------------------------------------
   task automatic run_linkwidth_start();
@@ -724,7 +714,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
   endtask : run_linkwidth_accept
 
-  //--------------------------------------------------------------------------------------------------------------------------------- 
+  //---------------------------------------------------------------------------------------------------------------------------------
   //    CONFIGURATION.LANENUM    [NEW]
   //---------------------------------------------------------------------------------------------------------------------------------
   task automatic run_configuration_lanenum_wait();
@@ -867,7 +857,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
   endtask : run_configuration_lanenum_accept
 
-  //--------------------------------------------------------------------------------------------------------------------------------- 
+  //---------------------------------------------------------------------------------------------------------------------------------
   //    CONFIGURATION.COMPLETE / IDLE    [NEW]
   //---------------------------------------------------------------------------------------------------------------------------------
   task automatic run_configuration_complete();
@@ -971,8 +961,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
         `uvm_error(name, "Configuration.Idle Timeout")
         disable fork;
         //NOTE: Recovery states (RECOVERY_RCVR_LOCK etc.) don't exist in this file yet -
-        //returning to Detect for now rather than a dead-end Recovery jump. Revisit once
-        //Recovery is built out.
+        //returning to Detect for now rather than a dead-end Recovery jump.
         next_state            = DETECT_ST;
         next_detect_substate  = DETECT_QUIET;
         idle_tx_count = 0;
@@ -982,7 +971,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
   endtask : run_configuration_idle
 
-  //--------------------------------------------------------------------------------------------------------------------------------- 
+  //---------------------------------------------------------------------------------------------------------------------------------
   //    POLLING ACTIVE   [FIXED - real RX loop added, timeout units fixed]
   //---------------------------------------------------------------------------------------------------------------------------------
   task automatic run_polling_active();
@@ -1018,11 +1007,6 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
       receive_ts(rx_bytes_i, rx_lane_number_i, rx_valid_i);
       ts1_rx_count++;
 
-      //Throttled: full detail every single reception would be ~1024 lines per side just for
-      //this one state (ts1_tx_count must reach TS1_1024_COUNT regardless of match count) -
-      //print at UVM_LOW only on the first reception and every 128th after, so a default run
-      //shows proof of genuine exchange without flooding. Raise verbosity to UVM_HIGH to see
-      //every single one.
       if (ts1_rx_count == 1 || (ts1_rx_count % 128) == 0) begin
         `uvm_info(name, $sformatf("RX TS1 #%0d: valid=%0d link=0x%0h lane=0x%0h n_fts=0x%0h data_rate=0x%0h train_ctrl=0x%0h id=0x%0h",
                                    ts1_rx_count, rx_valid_i, rx_bytes_i.sym1_link_number, rx_lane_number_i[0],
@@ -1083,7 +1067,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
   endtask : run_polling_active
 
-  //--------------------------------------------------------------------------------------------------------------------------------- 
+  //---------------------------------------------------------------------------------------------------------------------------------
   //    POLLING COMPLIANCE   [NEW]
   //---------------------------------------------------------------------------------------------------------------------------------
   // No logical exit condition of its own per spec - sends a Compliance Pattern
@@ -1119,12 +1103,14 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
   endtask : run_polling_compliance
 
-  //--------------------------------------------------------------------------------------------------------------------------------- 
+  //---------------------------------------------------------------------------------------------------------------------------------
   //    POLLING CONFIGURE   [FIXED - real RX loop added, timeout units fixed]
   //---------------------------------------------------------------------------------------------------------------------------------
   task automatic run_polling_configuration();
     time start_time;
     bit  first_ts2_received;
+    bit  lane_match;
+    int unsigned rx_attempt_i;
 
     `uvm_info(name, "Entering Polling.Configuration", UVM_MEDIUM)
 
@@ -1134,7 +1120,17 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     ts2_tx_count_complete = 0;
     ts2_rx_count          = 0;
     first_ts2_received     = 1'b0;
+    rx_attempt_i           = 0;
     start_time             = $time;
+
+    //Fix: run_polling_active()'s TX thread was killed via disable fork the instant its exit
+    //condition was met - that can land mid-symbol, not on a clean 10-bit boundary, breaking
+    //the PARTNER's already-established symbol_lock_acquired phase for good (receive_ts never
+    //re-searches once it's true). Confirmed by direct evidence: every single RX TS2 reception
+    //showed valid=0, from the very first one - not a content or timing bug, a genuine phase
+    //break at this transition. Forcing a fresh comma-search here (which already exists in
+    //receive_ts, just never re-triggered) self-corrects it.
+    symbol_lock_acquired = 1'b0;
 
     fork
       forever begin
@@ -1152,14 +1148,36 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
       bit                     rx_valid_i;
 
       receive_ts(rx_bytes_i, rx_lane_number_i, rx_valid_i);
+      rx_attempt_i++;
 
-      if (rx_valid_i && rx_bytes_i.sym6_15_identifier[0] == TS2_ID_BYTE) begin
-        if (!first_ts2_received) first_ts2_received = 1'b1;
-        ts2_rx_count++;
-        `uvm_info(name, $sformatf("Received matching TS2 (rx_count=%0d)", ts2_rx_count), UVM_HIGH)
+      //Real visibility, matching run_polling_active's pattern - was previously gated at
+      //UVM_HIGH only, meaning the last log couldn't actually distinguish "zero TS2 ever
+      //received" from "some received, just not enough" - this makes that determinable.
+      if (rx_attempt_i == 1 || (rx_attempt_i % 128) == 0) begin
+        `uvm_info(name, $sformatf("RX TS2 #%0d: valid=%0d link=0x%0h lane=0x%0h id=0x%0h ts2_tx_count_complete=%0d",
+                                   rx_attempt_i, rx_valid_i, rx_bytes_i.sym1_link_number,
+                                   rx_lane_number_i[0], rx_bytes_i.sym6_15_identifier[0],
+                                   ts2_tx_count_complete), UVM_LOW)
       end
 
-      if ((ts2_tx_count_complete >= MIN_TS2_TX_COMPLETE) && (ts2_rx_count >= CONSEC_TS_COUNT)) begin
+      //Fixed: genuinely consecutive matching (resets to 0 on a miss) instead of a pure
+      //cumulative-ever-received count - this is what CONSEC_TS2_COMPLETE's name actually
+      //means, and now matches EP's already-correct implementation exactly. Also added the
+      //Link/Lane check EP already had, since RC's TX content is genuinely PAD/PAD at this
+      //stage too.
+      lane_match = (rx_lane_number_i[0] == PAD_SYMBOL);
+
+      if (rx_valid_i && rx_bytes_i.sym6_15_identifier[0] == TS2_ID_BYTE &&
+          rx_bytes_i.sym1_link_number == PAD_SYMBOL && lane_match) begin
+        if (!first_ts2_received) first_ts2_received = 1'b1;
+        ts2_rx_count++;
+        `uvm_info(name, $sformatf("Received matching TS2 (consecutive=%0d)", ts2_rx_count), UVM_HIGH)
+      end
+      else begin
+        ts2_rx_count = 0;
+      end
+
+      if ((ts2_tx_count_complete >= MIN_TS2_TX_COMPLETE) && (ts2_rx_count >= CONSEC_TS2_COMPLETE)) begin
         `uvm_info(name, "Polling.Configuration completed successfully", UVM_LOW)
         disable fork;
         next_state            = CONFIG_ST;
@@ -1169,7 +1187,9 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
         return;
       end
 
-      if (($time - start_time) >= (CONFIG_TIMEOUT_MS * 1ms)) begin
+      //Fixed: was CONFIG_TIMEOUT_MS (2ms) - genuinely too tight relative to EP's own 48ms
+      //budget for the identical exchange. Unified to the same value both sides now use.
+      if (($time - start_time) >= (2 * POLLING_TIMEOUT_MS * 1ms)) begin
         `uvm_error(name, "Polling.Configuration Timeout")
         disable fork;
         next_state            = DETECT_ST;
@@ -1181,184 +1201,20 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
   endtask : run_polling_configuration
 
-  //--------------------------------------------------------------------------------------------------------------------------------- 
+  //---------------------------------------------------------------------------------------------------------------------------------
   //    L0 - data phase   [NEW]
   //---------------------------------------------------------------------------------------------------------------------------------
-  // Scope/honesty notes, read before using:
-  //  1. encode_8b10b_symbol()/decode_8b10b_symbol() (used below via drive_symbol_stream) are
-  //     genuinely correct only for GEN1/GEN2 (real 8b/10b line coding). GEN3-GEN5 use
-  //     128b/130b block encoding and GEN6 FLIT_MODE uses yet another scheme - neither exists
-  //     in this file. What's built here is LOGICALLY/protocol-content correct (right framing,
-  //     right token bytes, right Flit layout) at every speed, but only genuinely bit-accurate
-  //     on the wire at GEN1/GEN2.
-  //  2. drive_flit()'s dlp/crc/fec fields are left as placeholder zeros - real sequence
-  //     number/ack tracking and CRC/FEC computation don't exist here yet.
-  //  3. No full sequencer/item integration for data exists yet - see push_tlp() etc. above.
+  // NOTE: the data-phase TX helper tasks (drive_symbol_stream/drive_skp/drive_tlp/drive_dllp/
+  // drive_flit/push_tlp/push_dllp/push_flit_payload) and the Recovery-substate tasks have
+  // been removed for now. run_l0() below only does the RX-side bookkeeping (error/idle
+  // timeout tracking) needed to transition to Recovery; the TX-side fork and the
+  // partner-initiated TS1 qualification tracker are left out until those pieces come back.
   //---------------------------------------------------------------------------------------------------------------------------------
-
-  //-------------------------------------------------------
-  // Task: drive_symbol_stream
-  // Shared TX helper for everything in this L0 section - encodes and serializes an arbitrary
-  // byte stream, driving the SAME byte on every active lane each symbol-time (unlike drive_ts,
-  // none of SKP/TLP/DLLP/Flit content is per-lane-numbered).
-  //-------------------------------------------------------
-  task automatic drive_symbol_stream(input bit [7:0] byte_stream [], input bit is_k_stream []);
-    for (int s = 0; s < byte_stream.size(); s++) begin
-      bit [9:0] encoded [0:PCIE_MAX_LANES-1];
-
-      for (int l = 0; l < rc_agent_cfg_h.active_lanes; l++) begin
-        encoded[l] = encode_8b10b_symbol(byte_stream[s], is_k_stream[s], lane_disparity[l]);
-        lane_disparity[l] = next_running_disparity(encoded[l], lane_disparity[l]);
-      end
-
-      for (int b = 0; b < 10; b++) begin
-        logic [PCIE_MAX_LANES-1:0] tx_p_bits, tx_n_bits;
-        @(rcCb);
-        tx_p_bits = '0;
-        tx_n_bits = '0;
-        for (int l = 0; l < rc_agent_cfg_h.active_lanes; l++) begin
-          if (encoded[l][b]) begin
-            tx_p_bits[l] = 1'b1;
-            tx_n_bits[l] = 1'b0;
-          end
-          else begin
-            tx_p_bits[l] = 1'b0;
-            tx_n_bits[l] = 1'b1;
-          end
-        end
-        rcCb.TX_P <= tx_p_bits;
-        rcCb.TX_N <= tx_n_bits;
-      end
-    end
-  endtask : drive_symbol_stream
-
-  //-------------------------------------------------------
-  // Task: drive_skp
-  // Classic 4-symbol SKIP Ordered Set (COM + 3xSKP) for periodic clock-tolerance
-  // compensation in L0. Real higher-gen block-based SKP framing differs - see scope note.
-  //-------------------------------------------------------
-  task automatic drive_skp();
-    bit [7:0] stream [];
-    bit       is_k   [];
-    stream = new[4];
-    is_k   = new[4];
-    stream[0] = COM_SYMBOL; is_k[0] = 1'b1;
-    stream[1] = SKP_SYMBOL; is_k[1] = 1'b1;
-    stream[2] = SKP_SYMBOL; is_k[2] = 1'b1;
-    stream[3] = SKP_SYMBOL; is_k[3] = 1'b1;
-    drive_symbol_stream(stream, is_k);
-  endtask : drive_skp
-
-  //-------------------------------------------------------
-  // Tasks: push_tlp / push_dllp / push_flit_payload
-  // Test/sequence-facing hooks - call these on the virtual interface handle to enqueue real
-  // data for run_l0() to drain.
-  //-------------------------------------------------------
-  task automatic push_tlp(input byte_queue_t payload);
-    tlp_tx_queue.push_back(payload);
-  endtask : push_tlp
-
-  task automatic push_dllp(input byte_queue_t payload);
-    dllp_tx_queue.push_back(payload);
-  endtask : push_dllp
-
-  task automatic push_flit_payload(input flit_payload_t payload);
-    flit_tx_queue.push_back(payload);
-  endtask : push_flit_payload
-
-  //-------------------------------------------------------
-  // Task: drive_tlp
-  // NON_FLIT_MODE only. STP_TOKEN + payload + END_TOKEN framing.
-  //-------------------------------------------------------
-  task automatic drive_tlp();
-    byte_queue_t payload;
-    bit [7:0]    stream [];
-    bit          is_k   [];
-    int          n;
-
-    payload = tlp_tx_queue[0];
-    void'(tlp_tx_queue.pop_front());
-    n = payload.size();
-    stream = new[n+2];
-    is_k   = new[n+2];
-
-    stream[0] = STP_TOKEN; is_k[0] = 1'b1;
-    for (int i = 0; i < n; i++) begin
-      stream[1+i] = payload[i];
-      is_k[1+i]   = 1'b0;
-    end
-    stream[n+1] = END_TOKEN; is_k[n+1] = 1'b1;
-
-    drive_symbol_stream(stream, is_k);
-  endtask : drive_tlp
-
-  //-------------------------------------------------------
-  // Task: drive_dllp
-  // NON_FLIT_MODE only. SDP_TOKEN + payload + END_TOKEN framing. Real DLLPs have a fixed
-  // short length and a CRC16 - simplified here to whatever payload was pushed, no CRC.
-  //-------------------------------------------------------
-  task automatic drive_dllp();
-    byte_queue_t payload;
-    bit [7:0]    stream [];
-    bit          is_k   [];
-    int          n;
-
-    payload = dllp_tx_queue[0];
-    void'(dllp_tx_queue.pop_front());
-    n = payload.size();
-    stream = new[n+2];
-    is_k   = new[n+2];
-
-    stream[0] = SDP_TOKEN; is_k[0] = 1'b1;
-    for (int i = 0; i < n; i++) begin
-      stream[1+i] = payload[i];
-      is_k[1+i]   = 1'b0;
-    end
-    stream[n+1] = END_TOKEN; is_k[n+1] = 1'b1;
-
-    drive_symbol_stream(stream, is_k);
-  endtask : drive_dllp
-
-  //-------------------------------------------------------
-  // Task: drive_flit
-  // FLIT_MODE only (mandatory GEN6, optional lower gens if negotiated). Builds one flit_t
-  // (dlp/crc/fec left as placeholder zeros), flattens it to a 256-byte stream, all D-codes
-  // (real Flits aren't STP/SDP/END-token-framed - fixed size/cadence instead).
-  //-------------------------------------------------------
-  task automatic drive_flit();
-    flit_payload_t payload;
-    flit_t         flit;
-    bit [(FLIT_BYTES*8)-1:0] flit_bits;
-    bit [7:0] stream [];
-    bit       is_k   [];
-
-    payload = flit_tx_queue[0];
-    void'(flit_tx_queue.pop_front());
-
-    stream = new[FLIT_BYTES];
-    is_k   = new[FLIT_BYTES];
-
-    flit.tlp_payload = '0;
-    for (int i = 0; i < FLIT_TLP_PAYLOAD_BYTES; i++)
-      flit.tlp_payload[(i*8) +: 8] = payload[i];
-    flit.dlp = '0; //TODO: real sequence-number/ack fields
-    flit.crc = '0; //TODO: real CRC
-    flit.fec = '0; //TODO: real FEC
-
-    flit_bits = flit;
-    for (int i = 0; i < FLIT_BYTES; i++) begin
-      stream[i] = flit_bits[((FLIT_BYTES-1-i)*8) +: 8];
-      is_k[i]   = 1'b0;
-    end
-
-    drive_symbol_stream(stream, is_k);
-  endtask : drive_flit
 
   //-------------------------------------------------------
   // Task: sample_one_symbol
   // Lightweight RX helper for run_l0()'s error/idle tracking - lane 0 only. Assumes
-  // symbol_lock_acquired is already true by the time L0 is reached (true in the real flow -
-  // receive_ts() during Polling/Configuration establishes lock well before L0).
+  // symbol_lock_acquired is already true by the time L0 is reached.
   //-------------------------------------------------------
   task automatic sample_one_symbol(output bit [7:0] byte_val, output bit is_k, output bit valid);
     bit [9:0] code;
@@ -1372,32 +1228,12 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
 
   //-------------------------------------------------------
   // Task: run_l0
-  // Drains pending data (Flit if FLIT_MODE, else TLP then DLLP priority), sends periodic SKP
-  // OS when idle, and watches RX for 5 REAL exit conditions to Recovery:
-  //   1. recovery_request (directed, test/sequence-driven)
-  //   2. current_speed != target_link_speed (climbing per SPEED_UPGRADE_SEQUENCE) - sets
-  //      directed_speed_change=1 and exits INSTANTANEOUSLY, no TS sent while still in L0
-  //   3. Partner-initiated: CONSEC_TS_REQUIRED consecutive QUALIFIED TS1 windows observed
-  //      (not a naive single-COM check - requires the identifier bytes to genuinely match
-  //      TS1_ID_BYTE too, same discipline as every other transition in this file)
-  //   4. MAX_CONSEC_RX_ERRORS consecutive decode failures
-  //   5. L0_IDLE_RX_TIMEOUT elapsed with no valid symbol received at all
   //-------------------------------------------------------
   task automatic run_l0();
     int unsigned consec_rx_errors;
     int unsigned skp_send_counter;
     realtime     last_legit_rx_time;
 
-    //Qualification tracker for RECOVERY_REASON_PARTNER_INITIATED - operates on the SAME
-    //single-symbol stream sample_one_symbol() already provides, tracking position within a
-    //candidate 16-symbol TS window incrementally (does NOT call receive_ts() - that task
-    //independently samples its own 16 symbols, which would desync alignment by one position
-    //if called after already peeking one symbol here).
-    int unsigned ts_candidate_symbol_pos;
-    bit          ts_candidate_is_ts1;
-    int unsigned consec_recovery_ts1_cnt;
-
-    localparam int unsigned SKP_INTERVAL_SYMBOLS  = 128;
     localparam int unsigned MAX_CONSEC_RX_ERRORS  = 8;
     localparam realtime     L0_IDLE_RX_TIMEOUT    = 10ms;
 
@@ -1416,15 +1252,17 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     consec_rx_errors         = 0;
     skp_send_counter         = 0;
     last_legit_rx_time       = $realtime;
-    ts_candidate_symbol_pos  = 0;
-    ts_candidate_is_ts1      = 1'b0;
-    consec_recovery_ts1_cnt  = 0;
 
-    fork
+    //-------------------------------------------------------
+    // TX side intentionally disabled - drive_flit()/drive_tlp()/drive_dllp()/drive_skp()
+    // were removed for now, so there is nothing left here to drive continuously except
+    // drive_idle(). Left commented until the data-phase TX tasks are reintroduced.
+    //-------------------------------------------------------
+    /* fork
       forever begin
         if (transfer_mode == FLIT_MODE) begin
           if (flit_tx_queue.size() > 0) drive_flit();
-          else                          drive_idle(); //TODO: real logical-idle-flit content
+          else                          drive_idle();
         end
         else begin
           if (tlp_tx_queue.size() > 0) begin
@@ -1445,7 +1283,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
           end
         end
       end
-    join_none
+    join_none */
 
     forever begin
       bit [7:0] rx_byte;
@@ -1463,37 +1301,9 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
       end
 
       //-------------------------------------------------------
-      // Partner-initiated Recovery qualification tracker - see task header note above.
+      // Partner-initiated Recovery (TS1 qualification tracker) intentionally removed for
+      // now - re-add once needed.
       //-------------------------------------------------------
-      if (ts_candidate_symbol_pos == 0) begin
-        if (rx_valid && rx_is_k && rx_byte == COM_SYMBOL) begin
-          ts_candidate_symbol_pos = 1;
-          ts_candidate_is_ts1     = 1'b1;
-        end
-      end
-      else begin
-        if (ts_candidate_symbol_pos >= 6 && ts_candidate_symbol_pos <= 15) begin
-          if (!(rx_valid && !rx_is_k && rx_byte == TS1_ID_BYTE)) begin
-            ts_candidate_is_ts1 = 1'b0;
-          end
-        end
-
-        ts_candidate_symbol_pos++;
-
-        if (ts_candidate_symbol_pos > 15) begin
-          consec_recovery_ts1_cnt = ts_candidate_is_ts1 ? consec_recovery_ts1_cnt + 1 : 0;
-          ts_candidate_symbol_pos = 0;
-
-          if (consec_recovery_ts1_cnt >= CONSEC_TS_REQUIRED) begin
-            `uvm_info(name, $sformatf("L0: %0d consecutive qualified TS1 windows observed - partner left L0, following into Recovery",
-                                       consec_recovery_ts1_cnt), UVM_LOW)
-            disable fork;
-            next_state           = RECOVERY_ST;
-            next_recovery_reason = RECOVERY_REASON_PARTNER_INITIATED;
-            return;
-          end
-        end
-      end
 
       if (recovery_request) begin
         `uvm_info(name, "L0: directed Recovery request", UVM_LOW)

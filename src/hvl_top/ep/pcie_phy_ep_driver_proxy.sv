@@ -168,7 +168,30 @@ task pcie_phy_ep_driver_proxy::run_phase(uvm_phase phase);
         LTSSM_TASK_CFG_LINKWIDTH_ACCEPT:
           pcie_phy_ep_drv_bfm_h.run_linkwidth_accept(req.rsp_config_substate, req.rsp_state);
 
-        
+        LTSSM_TASK_POLLING_COMPLIANCE:
+          pcie_phy_ep_drv_bfm_h.run_polling_compliance(req.rsp_polling_substate, req.rsp_state);
+
+        LTSSM_TASK_CFG_LANENUM_WAIT:
+          pcie_phy_ep_drv_bfm_h.run_configuration_lanenum_wait(req.rsp_config_substate, req.rsp_state);
+
+        LTSSM_TASK_CFG_LANENUM_ACCEPT:
+          pcie_phy_ep_drv_bfm_h.run_configuration_lanenum_accept(req.rsp_config_substate, req.rsp_state);
+
+        LTSSM_TASK_CFG_COMPLETE:
+          pcie_phy_ep_drv_bfm_h.run_configuration_complete(req.rsp_config_substate, req.rsp_state);
+
+        LTSSM_TASK_CFG_IDLE:
+          pcie_phy_ep_drv_bfm_h.run_configuration_idle(req.rsp_state);
+
+        LTSSM_TASK_L0: begin
+          //Fire-and-forget, mirrors RC's identical approach - run_l0() runs indefinitely
+          //during healthy operation, reaching L0 is itself the success signal.
+          recovery_reason_e unused_recovery_reason;
+          fork
+            pcie_phy_ep_drv_bfm_h.run_l0(req.rsp_state, unused_recovery_reason);
+          join_none
+          req.rsp_state = L0_ST;
+        end
 
         default:
           `uvm_error(get_type_name(),

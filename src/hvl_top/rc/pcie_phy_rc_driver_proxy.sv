@@ -112,7 +112,33 @@ task pcie_phy_rc_driver_proxy::run_phase(uvm_phase phase);
         LTSSM_TASK_CFG_LINKWIDTH_ACCEPT:
           pcie_phy_rc_drv_bfm_h.run_linkwidth_accept();
 
-        
+        LTSSM_TASK_POLLING_COMPLIANCE:
+          pcie_phy_rc_drv_bfm_h.run_polling_compliance();
+
+        LTSSM_TASK_CFG_LANENUM_WAIT:
+          pcie_phy_rc_drv_bfm_h.run_configuration_lanenum_wait();
+
+        LTSSM_TASK_CFG_LANENUM_ACCEPT:
+          pcie_phy_rc_drv_bfm_h.run_configuration_lanenum_accept();
+
+        LTSSM_TASK_CFG_COMPLETE:
+          pcie_phy_rc_drv_bfm_h.run_configuration_complete();
+
+        LTSSM_TASK_CFG_IDLE:
+          pcie_phy_rc_drv_bfm_h.run_configuration_idle();
+
+        LTSSM_TASK_L0: begin
+          //run_l0() runs indefinitely during healthy operation - only returns on a
+          //Recovery-triggering condition (speed mismatch, errors, directed request, idle
+          //timeout). Dispatched fire-and-forget: reaching L0 IS the success signal for a
+          //training-completion test, not waiting for something to eventually go wrong.
+          //Sets next_state on the BFM itself (not req.rsp_state directly) so the
+          //unconditional copy-back below picks it up correctly instead of overwriting it.
+          fork
+            pcie_phy_rc_drv_bfm_h.run_l0();
+          join_none
+          pcie_phy_rc_drv_bfm_h.next_state = L0_ST;
+        end
 
         default:
           `uvm_fatal(get_type_name(), $sformatf("Unhandled task_id %s", req.task_id.name()))

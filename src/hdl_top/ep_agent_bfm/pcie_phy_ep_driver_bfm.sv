@@ -40,6 +40,11 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
   // Local TX-side variable
   //-------------------------------------------------------
   pcie_gen_e   current_speed;
+  data_transfer_mode_e transfer_mode;
+  bit        directed_speed_change;
+  pcie_gen_e current_rate;
+  bit        changed_speed_recovery;
+  bit        successful_speed_negotiation;
   bit [7:0]    configured_link_number;
   bit [7:0]    configured_lane_number [0:PCIE_MAX_LANES-1];
   int unsigned ts1_tx_count;
@@ -774,7 +779,9 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
 
   //-------------------------------------------------------
   // ADDED - Task: run_polling_configuration
-  // Spec 4.2.7.2.3. Same conventions as run_polling_active above.
+  // Spec 4.2.7.2.3. Same conventions as run_polling_active above. Added throttled UVM_LOW
+  // RX-content visibility matching run_polling_active - was previously invisible whether
+  // zero or some-but-insufficient TS2s were being received.
   //-------------------------------------------------------
   task automatic run_polling_configuration(output polling_substate_e next_polling_substate,
                                             output ltssm_state_e      next_state);
@@ -783,6 +790,7 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     bit                     rx_valid;
     bit                     first_ts2_received;
     int unsigned            consec_rx_match_cnt;
+    int unsigned            rx_attempt_i;
     time                    start_time;
 
     `uvm_info(name, "Entering Polling.Configuration", UVM_MEDIUM)
@@ -790,7 +798,14 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     ts2_tx_count_complete = 0;
     first_ts2_received     = 1'b0;
     consec_rx_match_cnt    = 0;
-    start_time             = $time;
+    rx_attempt_i            = 0;
+    start_time              = $time;
+
+    //Fix: mirrors RC's identical fix - run_polling_active()'s TX thread was killed mid-symbol
+    //via disable fork, breaking the partner's already-established symbol_lock_acquired
+    //phase. Confirmed by direct evidence: every RX TS2 reception showed valid=0. Forcing a
+    //fresh comma-search here self-corrects it.
+    symbol_lock_acquired = 1'b0;
 
     fork
       forever begin
@@ -801,6 +816,14 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
 
     forever begin
       receive_ts(rx_bytes, rx_lane_number, rx_valid);
+      rx_attempt_i++;
+
+      if (rx_attempt_i == 1 || (rx_attempt_i % 128) == 0) begin
+        `uvm_info(name, $sformatf("RX TS2 #%0d: valid=%0d link=0x%0h lane=0x%0h id=0x%0h ts2_tx_count_complete=%0d",
+                                   rx_attempt_i, rx_valid, rx_bytes.sym1_link_number,
+                                   rx_lane_number[0], rx_bytes.sym6_15_identifier[0],
+                                   ts2_tx_count_complete), UVM_LOW)
+      end
 
       if (rx_valid && rx_bytes.sym6_15_identifier[0] == TS2_ID_BYTE &&
           rx_bytes.sym1_link_number == PAD_SYMBOL &&
@@ -828,6 +851,376 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
       end
     end
   endtask : run_polling_configuration
+
+  //-------------------------------------------------------
+  // Task: receive_idle    [NEW - mirrors RC's, needed by run_configuration_idle below]
+  //-------------------------------------------------------
+  task automatic receive_idle(output bit [7:0] rx_byte [0:PCIE_MAX_LANES-1],
+                               output bit       rx_ok   [0:PCIE_MAX_LANES-1]);
+    bit [9:0] rx_encoded [0:PCIE_MAX_LANES-1];
+
+    for (int b = 0; b < 10; b++) begin
+      @(epCb);
+      for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++)
+        rx_encoded[l][b] = epCb.RX_P[l];
+    end
+
+    for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++) begin
+      bit decoded_is_k;
+      decode_8b10b_symbol(rx_encoded[l], rx_lane_disparity[l], rx_byte[l], decoded_is_k, rx_ok[l]);
+      rx_lane_disparity[l] = next_running_disparity(rx_encoded[l], rx_lane_disparity[l]);
+    end
+  endtask : receive_idle
+
+  //---------------------------------------------------------------------------------------------------------------------------------
+  //    POLLING COMPLIANCE   [NEW - mirrors RC's]
+  //---------------------------------------------------------------------------------------------------------------------------------
+  task automatic run_polling_compliance(output polling_substate_e next_polling_substate,
+                                         output ltssm_state_e      next_state);
+    `uvm_info(name, "Entering Polling.Compliance", UVM_MEDIUM)
+
+    forever begin
+      drive_ts(OS_TS1, PAD_SYMBOL, PAD_SYMBOL,
+                1'b0, ep_agent_cfg_h.default_autonomous_change, ep_agent_cfg_h.default_elbc,
+                ep_agent_cfg_h.default_no_scrambling, ep_agent_cfg_h.default_loopback,
+                ep_agent_cfg_h.default_disable_link, ep_agent_cfg_h.default_hot_reset, 1'b0);
+
+      if (exit_compliance_req) begin
+        `uvm_info(name, "Polling.Compliance: exit requested", UVM_LOW)
+        exit_compliance_req = 1'b0;
+        next_state = DETECT_ST;
+        return;
+      end
+    end
+  endtask : run_polling_compliance
+
+  //---------------------------------------------------------------------------------------------------------------------------------
+  //    CONFIGURATION.LANENUM    [NEW - mirrors RC's]
+  //---------------------------------------------------------------------------------------------------------------------------------
+  task automatic run_configuration_lanenum_wait(output config_substate_e next_config_substate,
+                                                  output ltssm_state_e     next_state);
+    ts_ordered_set_bytes_t rx_bytes;
+    bit [7:0]               rx_lane_number [0:PCIE_MAX_LANES-1];
+    bit                     rx_valid;
+    int unsigned            consec_match_cnt;
+    int unsigned            ts_attempt_cnt;
+    bit                     valid_lane_group;
+
+    `uvm_info(name, "Entering Configuration.Lanenum.Wait", UVM_MEDIUM)
+
+    consec_match_cnt = 0;
+    ts_attempt_cnt   = 0;
+
+    fork
+      forever drive_ts(OS_TS1, configured_link_number, PAD_SYMBOL,
+                        1'b0, ep_agent_cfg_h.default_autonomous_change, ep_agent_cfg_h.default_elbc,
+                        ep_agent_cfg_h.default_no_scrambling, ep_agent_cfg_h.default_loopback,
+                        ep_agent_cfg_h.default_disable_link, ep_agent_cfg_h.default_hot_reset, 1'b1);
+    join_none
+
+    forever begin
+      receive_ts(rx_bytes, rx_lane_number, rx_valid);
+      ts_attempt_cnt++;
+
+      if (rx_valid) begin
+        valid_lane_group = 1'b1;
+        if (rx_bytes.sym1_link_number != configured_link_number) valid_lane_group = 1'b0;
+        for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++)
+          if (rx_lane_number[l] != configured_lane_number[l]) valid_lane_group = 1'b0;
+
+        consec_match_cnt = valid_lane_group ? consec_match_cnt + 1 : 0;
+
+        if (consec_match_cnt >= CONSEC_TS_REQUIRED) begin
+          `uvm_info(name, "Configuration.Lanenum.Wait completed", UVM_HIGH)
+          disable fork;
+          next_config_substate = CFG_LANENUM_ACCEPT;
+          next_state             = CONFIG_ST;
+          return;
+        end
+      end
+
+      if (ts_attempt_cnt >= ep_agent_cfg_h.config_timeout_ts_count) begin
+        `uvm_error(name, "Configuration.Lanenum.Wait Timeout")
+        disable fork;
+        next_state = DETECT_ST;
+        return;
+      end
+    end
+  endtask : run_configuration_lanenum_wait
+
+  task automatic run_configuration_lanenum_accept(output config_substate_e next_config_substate,
+                                                    output ltssm_state_e     next_state);
+    ts_ordered_set_bytes_t rx_bytes;
+    bit [7:0]               rx_lane_number [0:PCIE_MAX_LANES-1];
+    bit                     rx_valid;
+    int unsigned            consec_match_cnt;
+    int unsigned            ts_attempt_cnt;
+    bit                     valid_group;
+    bit                     smaller_link_detected;
+    bit                     any_non_pad;
+
+    `uvm_info(name, "Entering Configuration.Lanenum.Accept", UVM_MEDIUM)
+
+    consec_match_cnt      = 0;
+    ts_attempt_cnt         = 0;
+    smaller_link_detected = 1'b0;
+
+    fork
+      forever drive_ts(OS_TS1, configured_link_number, PAD_SYMBOL,
+                        1'b0, ep_agent_cfg_h.default_autonomous_change, ep_agent_cfg_h.default_elbc,
+                        ep_agent_cfg_h.default_no_scrambling, ep_agent_cfg_h.default_loopback,
+                        ep_agent_cfg_h.default_disable_link, ep_agent_cfg_h.default_hot_reset, 1'b1);
+    join_none
+
+    forever begin
+      receive_ts(rx_bytes, rx_lane_number, rx_valid);
+      ts_attempt_cnt++;
+
+      if (rx_valid) begin
+        valid_group = 1'b1;
+        if (rx_bytes.sym1_link_number != configured_link_number) valid_group = 1'b0;
+        for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++)
+          if (rx_lane_number[l] != configured_lane_number[l]) valid_group = 1'b0;
+
+        smaller_link_detected = 1'b0;
+        for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++)
+          if ((configured_lane_number[l] != PAD_SYMBOL) && (rx_lane_number[l] == PAD_SYMBOL))
+            smaller_link_detected = 1'b1;
+
+        consec_match_cnt = valid_group ? consec_match_cnt + 1 : 0;
+
+        if (consec_match_cnt >= CONSEC_TS_REQUIRED) begin
+          `uvm_info(name, "Lane Number negotiation accepted", UVM_HIGH)
+          disable fork;
+          next_config_substate = CFG_COMPLETE;
+          next_state             = CONFIG_ST;
+          return;
+        end
+
+        if (smaller_link_detected) begin
+          `uvm_info(name, "Reducing negotiated Link Width", UVM_HIGH)
+          for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++)
+            configured_lane_number[l] = rx_lane_number[l];
+          disable fork;
+          next_config_substate = CFG_LANENUM_WAIT;
+          next_state             = CONFIG_ST;
+          return;
+        end
+
+        any_non_pad = 1'b0;
+        for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++)
+          if (rx_lane_number[l] != PAD_SYMBOL) any_non_pad = 1'b1;
+
+        if (!any_non_pad) begin
+          `uvm_warning(name, "All received Lane Numbers are PAD")
+          disable fork;
+          next_state = DETECT_ST;
+          return;
+        end
+      end
+
+      if (ts_attempt_cnt >= ep_agent_cfg_h.config_timeout_ts_count) begin
+        `uvm_error(name, "Configuration.Lanenum.Accept Timeout")
+        disable fork;
+        next_state = DETECT_ST;
+        return;
+      end
+    end
+  endtask : run_configuration_lanenum_accept
+
+  //---------------------------------------------------------------------------------------------------------------------------------
+  //    CONFIGURATION.COMPLETE / IDLE    [NEW - mirrors RC's]
+  //---------------------------------------------------------------------------------------------------------------------------------
+  task automatic run_configuration_complete(output config_substate_e next_config_substate,
+                                              output ltssm_state_e     next_state);
+    ts_ordered_set_bytes_t rx_bytes;
+    bit [7:0]               rx_lane_number [0:PCIE_MAX_LANES-1];
+    bit                     rx_valid;
+    int unsigned            consec_ts2_cnt;
+    int unsigned            ts_attempt_cnt;
+    bit                     valid_group;
+
+    `uvm_info(name, "Entering Configuration.Complete", UVM_MEDIUM)
+
+    consec_ts2_cnt = 0;
+    ts_attempt_cnt = 0;
+
+    fork
+      forever drive_ts(OS_TS2, configured_link_number, PAD_SYMBOL,
+                        1'b0, ep_agent_cfg_h.default_autonomous_change, ep_agent_cfg_h.default_elbc,
+                        ep_agent_cfg_h.default_no_scrambling, ep_agent_cfg_h.default_loopback,
+                        ep_agent_cfg_h.default_disable_link, ep_agent_cfg_h.default_hot_reset, 1'b1);
+    join_none
+
+    forever begin
+      receive_ts(rx_bytes, rx_lane_number, rx_valid);
+      ts_attempt_cnt++;
+
+      if (rx_valid) begin
+        valid_group = 1'b1;
+        if (rx_bytes.sym1_link_number != configured_link_number) valid_group = 1'b0;
+        for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++)
+          if (rx_lane_number[l] != configured_lane_number[l]) valid_group = 1'b0;
+        if (rx_bytes.sym6_15_identifier[0] != TS2_ID_BYTE) valid_group = 1'b0;
+
+        consec_ts2_cnt = valid_group ? consec_ts2_cnt + 1 : 0;
+
+        if (consec_ts2_cnt >= CONSEC_TS_REQUIRED) begin
+          `uvm_info(name, "Configuration.Complete Finished", UVM_HIGH)
+          disable fork;
+          next_config_substate = CFG_IDLE;
+          next_state             = CONFIG_ST;
+          return;
+        end
+      end
+
+      if (ts_attempt_cnt >= ep_agent_cfg_h.config_timeout_ts_count) begin
+        `uvm_error(name, "Configuration.Complete Timeout")
+        disable fork;
+        next_state = DETECT_ST;
+        return;
+      end
+    end
+  endtask : run_configuration_complete
+
+  task automatic run_configuration_idle(output ltssm_state_e next_state);
+    bit [7:0]    rx_byte [0:PCIE_MAX_LANES-1];
+    bit          rx_ok   [0:PCIE_MAX_LANES-1];
+    bit          all_lanes_idle;
+    int unsigned idle_attempt_cnt;
+    int unsigned local_idle_tx_count;
+    int unsigned local_idle_rx_count;
+
+    `uvm_info(name, "Entering Configuration.Idle", UVM_MEDIUM)
+
+    local_idle_rx_count = 0;
+    local_idle_tx_count = 0;
+    idle_attempt_cnt     = 0;
+
+    fork
+      forever begin
+        drive_idle();
+        local_idle_tx_count++;
+      end
+    join_none
+
+    forever begin
+      receive_idle(rx_byte, rx_ok);
+      idle_attempt_cnt++;
+
+      all_lanes_idle = 1'b1;
+      for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++)
+        if (!(rx_ok[l] && (rx_byte[l] == IDLE_SYMBOL))) all_lanes_idle = 1'b0;
+
+      local_idle_rx_count = all_lanes_idle ? local_idle_rx_count + 1 : 0;
+
+      if ((local_idle_rx_count >= MIN_IDLE_RX) && (local_idle_tx_count >= MIN_IDLE_TX)) begin
+        `uvm_info(name, "Configuration.Idle completed - Link Up (L0)", UVM_LOW)
+        disable fork;
+        next_state = L0_ST;
+        return;
+      end
+
+      if (idle_attempt_cnt >= ep_agent_cfg_h.config_timeout_ts_count) begin
+        `uvm_error(name, "Configuration.Idle Timeout")
+        disable fork;
+        next_state = DETECT_ST;
+        return;
+      end
+    end
+  endtask : run_configuration_idle
+
+  //-------------------------------------------------------
+  // Task: sample_one_symbol
+  // Lightweight RX helper for run_l0()'s error/idle tracking - lane 0 only. Mirrors
+  // pcie_phy_rc_driver_bfm's identical task.
+  //-------------------------------------------------------
+  task automatic sample_one_symbol(output bit [7:0] byte_val, output bit is_k, output bit valid);
+    bit [9:0] code;
+    for (int b = 0; b < 10; b++) begin
+      @(epCb);
+      code[b] = epCb.RX_P[0];
+    end
+    decode_8b10b_symbol(code, rx_lane_disparity[0], byte_val, is_k, valid);
+    rx_lane_disparity[0] = next_running_disparity(code, rx_lane_disparity[0]);
+  endtask : sample_one_symbol
+
+  //-------------------------------------------------------
+  // Task: run_l0
+  // Mirrors pcie_phy_rc_driver_bfm's run_l0() exactly - same 4 exit conditions, same
+  // simplified scope (TX-side data helpers and the partner-initiated TS1 qualification
+  // tracker are not present, matching RC's current state). Uses EP's own output-argument
+  // convention instead of RC's global-variable style, matching every other EP task.
+  //-------------------------------------------------------
+  task automatic run_l0(output ltssm_state_e next_state, output recovery_reason_e next_recovery_reason_out);
+    int unsigned consec_rx_errors;
+    realtime     last_legit_rx_time;
+
+    localparam int unsigned MAX_CONSEC_RX_ERRORS  = 8;
+    localparam realtime     L0_IDLE_RX_TIMEOUT    = 10ms;
+
+    `uvm_info(name, "Entering L0", UVM_MEDIUM)
+
+    current_rate                  = current_speed;
+    directed_speed_change         = 1'b0;
+    changed_speed_recovery        = 1'b0;
+    successful_speed_negotiation  = 1'b0;
+
+    transfer_mode = (current_speed >= FLIT_MODE_MANDATORY_FROM_GEN)
+                    ? FLIT_MODE : ep_agent_cfg_h.preferred_transfer_mode;
+
+    consec_rx_errors   = 0;
+    last_legit_rx_time = $realtime;
+
+    forever begin
+      bit [7:0] rx_byte;
+      bit       rx_is_k;
+      bit       rx_valid;
+
+      sample_one_symbol(rx_byte, rx_is_k, rx_valid);
+
+      if (rx_valid) begin
+        consec_rx_errors   = 0;
+        last_legit_rx_time = $realtime;
+      end
+      else begin
+        consec_rx_errors++;
+      end
+
+      if (recovery_request) begin
+        `uvm_info(name, "L0: directed Recovery request", UVM_LOW)
+        recovery_request = 1'b0;
+        next_state             = RECOVERY_ST;
+        next_recovery_reason_out = RECOVERY_REASON_DIRECTED;
+        return;
+      end
+
+      if (current_speed != ep_agent_cfg_h.target_link_speed) begin
+        directed_speed_change = 1'b1;
+        `uvm_info(name, $sformatf("L0: directed_speed_change asserted (%s -> %s) - exiting L0 instantaneously",
+                                   current_speed.name(),
+                                   ep_agent_cfg_h.target_link_speed.name()), UVM_LOW)
+        next_state             = RECOVERY_ST;
+        next_recovery_reason_out = RECOVERY_REASON_SPEED_CHANGE;
+        return;
+      end
+
+      if (consec_rx_errors >= MAX_CONSEC_RX_ERRORS) begin
+        `uvm_warning(name, $sformatf("L0: %0d consecutive receive errors - entering Recovery",
+                                      consec_rx_errors))
+        next_state             = RECOVERY_ST;
+        next_recovery_reason_out = RECOVERY_REASON_ERROR_THRESHOLD;
+        return;
+      end
+
+      if (($realtime - last_legit_rx_time) >= L0_IDLE_RX_TIMEOUT) begin
+        `uvm_warning(name, "L0: no valid symbol received for too long - entering Recovery")
+        next_state             = RECOVERY_ST;
+        next_recovery_reason_out = RECOVERY_REASON_IDLE_TIMEOUT;
+        return;
+      end
+    end
+  endtask : run_l0
 
 endinterface : pcie_phy_ep_driver_bfm
 

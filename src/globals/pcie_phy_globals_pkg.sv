@@ -60,8 +60,28 @@ package pcie_phy_pkg;
   parameter bit [7:0] PAD_SYMBOL   = 8'hF7; //Pad - unassigned Link#/Lane#
   parameter bit [7:0] TS1_ID_BYTE  = 8'h4A; //TS1 identifier symbol (D10.2)
   parameter bit [7:0] TS2_ID_BYTE  = 8'h45; //TS2 identifier symbol (D5.2)
+
+  //-------------------------------------------------------
+  // Modified TS1/TS2 (128b/130b, Gen3+) - identifier bytes and EC (Equalization Control)
+  // field values. use_modified_ts becomes true once current_speed >= EQ_REQUIRED_MIN_GEN and
+  // stays true from then on - it does not revert on a later speed step, since a link already
+  // operating at Gen3+ never goes back to the standard 8b/10b TS format.
+  //-------------------------------------------------------
+  parameter bit [7:0] MOD_TS1_ID = 8'h1E;
+  parameter bit [7:0] MOD_TS2_ID = 8'h2D;
+
+  //EC field values - occupy bits[7:6] of byte 5 in the Modified TS format. EC=01b covers
+  //BOTH Phase 0 (preset loading) and Phase 1 (FS/LF exchange) - the two phases share this
+  //wire value and are distinguished by LTSSM-internal behavior, not by EC itself.
+  parameter bit [7:0] EC_PHASE0_1 = 8'h40; //bits[7:6]=01
+  parameter bit [7:0] EC_PHASE2   = 8'h80; //bits[7:6]=10
+  parameter bit [7:0] EC_PHASE3   = 8'hC0; //bits[7:6]=11
+  parameter bit [7:0] EC_DONE     = 8'h00; //bits[7:6]=00 - equalization complete
+
   parameter bit [7:0] IDLE_SYMBOL  = 8'h00; //Logical Idle data symbol (D0.0) - corrected
   parameter bit [7:0] EIE_SYM      = 8'hFC; //Electrical Idle Exit (logical marker)
+  parameter bit [7:0] IDL_SYM      = 8'h7C; //Electrical Idle (K28.3) - EIOS content for
+                                             //Recovery.Speed, distinct from EIE_SYM above
   parameter bit [7:0] SDS_SYM      = 8'hE1; //Start of Data Stream
   parameter bit [7:0] SKP_SYMBOL   = 8'hAA; //Skip
   parameter bit [7:0] FTS_ID       = 8'h55; //FTS identifier symbol
@@ -212,13 +232,19 @@ package pcie_phy_pkg;
   } config_substate_e;
  
   //Enum: recovery_substate_e - sub-states of ltssm_state_e::RECOVERY_ST
-  //RECOVERY_RCVR_LOCK/RECOVERY_SPEED/RECOVERY_RCVR_CFG/RECOVERY_EQUALIZATION/RECOVERY_IDLE
-  //are re-entered once per step of SPEED_UPGRADE_SEQUENCE when stepping up to GEN6.
+  //RECOVERY_RCVR_LOCK/RECOVERY_SPEED/RECOVERY_RCVR_CFG/RECOVERY_IDLE are re-entered once per
+  //step of SPEED_UPGRADE_SEQUENCE when stepping up to GEN6. The single RECOVERY_EQUALIZATION
+  //placeholder is replaced with the 4 real phases (EC=01b/01b/10b/11b per spec) - EC=01b
+  //covers both Phase 0 and Phase 1, distinguished behaviourally, not by wire value; see
+  //run_recovery_eq_phase0()/phase1()'s own headers.
   typedef enum logic [2:0] {
     RECOVERY_RCVR_LOCK,
     RECOVERY_RCVR_CFG,
     RECOVERY_SPEED,
-    RECOVERY_EQUALIZATION,
+    RECOVERY_EQ_PHASE0,
+    RECOVERY_EQ_PHASE1,
+    RECOVERY_EQ_PHASE2,
+    RECOVERY_EQ_PHASE3,
     RECOVERY_IDLE
   } recovery_substate_e;
  
@@ -294,15 +320,19 @@ package pcie_phy_pkg;
     PIPE_RATE_GEN6 = 4'h5
   } pipe_rate_e;
 
-  
+  //Enum: bfm_verify_task_e
+  //Test/debug-only - selects exactly which driver_bfm task a verification sequence wants
+  //exercised next. Has no protocol meaning; it exists purely so every task implemented in
+  //rc_driver_bfm/ep_driver_bfm can be called at least once from a directed sequence, in
+  //whatever order, without needing real LTSSM stimulus to reach that state naturally.
   typedef enum {
-    VERIFY_SEND_TS1,                    //drive_ts(OS_TS1,           - rc + ep
-    VERIFY_SEND_TS2,                    //drive_ts(OS_TS2,           - rc + ep
+    VERIFY_SEND_TS1,                    //drive_ts(OS_TS1, ...)          - rc + ep
+    VERIFY_SEND_TS2,                    //drive_ts(OS_TS2, ...)          - rc + ep
     VERIFY_SEND_IDLE,                   //drive_idle()                   - rc + ep
     VERIFY_CHECK_ELECTRICAL_IDLE_EXIT,  //check_electrical_idle_exit_any_lane() - ep only
     VERIFY_PERFORM_RECEIVER_DETECTION,  //perform_receiver_detection_all_lanes() - ep only
-    VERIFY_RUN_DETECT_QUIET,            //run_detect_quiet          - ep only
-    VERIFY_RUN_DETECT_ACTIVE,            //run_detect_active         - ep only
+    VERIFY_RUN_DETECT_QUIET,            //run_detect_quiet(...)          - ep only
+    VERIFY_RUN_DETECT_ACTIVE,            //run_detect_active(...)         - ep only
     VERIFY_RUN_POLLING,
     VERIFY_RUN_CONFIG_LINKWIDTH_START,
     VERIFY_RUN_CONFIG_LINKWIDTH_ACCEPT,
@@ -360,8 +390,11 @@ package pcie_phy_pkg;
     SKP_ORDERED_SET     //Periodic Flit-mode SKP Ordered Set (clock compensation)
   } flit_content_e;
  
+  //=========================================================================================
+  // STRUCTS  (all `packed` so every type here can be driven/sampled directly on an
+  //           interface or cast to/from a bit-vector)
+  //=========================================================================================
  
-
   //Struct: ts_ordered_set_t
   //Decoded TS1/TS2 Ordered-Set fields used for Link Initialization/Training and
   //speed-negotiation packet formation, common to RC and EP
@@ -396,6 +429,28 @@ package pcie_phy_pkg;
     logic [7:0] sym5_training_ctrl;
     logic [9:0][7:0] sym6_15_identifier; //packed 10x8b: TS1_ID_BYTE x10 or TS2_ID_BYTE x10
   } ts_ordered_set_bytes_t;
+ 
+  //Struct: modified_ts_bytes_t
+  //Modified TS1/TS2 (128b/130b, Gen3+) logical content - only the 7 real content bytes
+  //(0-6). Byte 7 (parity), bytes 8-14 (replica of 0-6), and byte 15 (parity of the replica)
+  //are all DERIVED from these 7 at drive time and independently reconstructed/checked at
+  //receive time - not stored here, same separation of concerns as ts_ordered_set_bytes_t
+  //versus its own serialization in drive_ts()/receive_ts().
+  typedef struct packed {
+    logic [7:0] id;           //byte0: MOD_TS1_ID or MOD_TS2_ID
+    logic [7:0] link_number;  //byte1
+    logic [7:0] lane_number;  //byte2
+    logic [7:0] n_fts;        //byte3
+    logic [7:0] data_rate_id; //byte4 - bit7 is still speed_change (SC), same position as
+                               //the standard format
+    logic [7:0] ec_byte;      //byte5 - bits[7:6] = EC (EC_PHASE0_1/EC_PHASE2/EC_PHASE3/
+                               //EC_DONE); this REPLACES byte5's meaning from the standard
+                               //format (which carried ELBC/scramble/hot_reset etc there) -
+                               //Modified TS byte5 is EC only, not the same bit layout
+    logic [7:0] payload;      //byte6 - meaning depends on phase: EQ preset (Phase 0),
+                               //FS/LF info (Phase 1), coefficient request/status (Phase 2/3),
+                               //or Gen6 capabilities (post-EQ, EC=EC_DONE)
+  } modified_ts_bytes_t;
  
   //Struct: sym4_data_rate_t
   //Bit-field breakdown of Symbol 4 (Data Rate Identifier)
@@ -470,6 +525,8 @@ package pcie_phy_pkg;
   parameter bit [9:0] K_EDB_N = 10'b0111101000;
   parameter bit [9:0] K_EIE_P = 10'b1100000111;
   parameter bit [9:0] K_EIE_N = 10'b0011111000;
+  parameter bit [9:0] K_IDL_P = 10'b1100001100; //K28.3, standard table
+  parameter bit [9:0] K_IDL_N = 10'b0011110011;
  
   //-------------------------------------------------------
   // Generic D-code (data character) tables, indexed by the 8-bit byte value (0-255).
@@ -546,7 +603,14 @@ package pcie_phy_pkg;
     10'b0011001110, 10'b1001100001, 10'b0101100001, 10'b0010011110, 10'b0011100001, 10'b0100011110, 10'b1000011110, 10'b0101001110
   };
  
-  
+  //-------------------------------------------------------
+  // Enum: pcie_phy_ltssm_task_e
+  // REAL protocol dispatch selector - distinct from bfm_verify_task_e (which is debug-only
+  // and has no protocol meaning). One value = exactly one callable task in
+  // rc_driver_bfm/ep_driver_bfm. A per-state sequence sets exactly one of these; the
+  // driver_proxy's job is only to call the matching task and copy its real output arguments
+  // back onto the item - it never decides what runs next.
+  //-------------------------------------------------------
   typedef enum {
     LTSSM_TASK_DETECT_QUIET,
     LTSSM_TASK_DETECT_ACTIVE,
@@ -558,7 +622,8 @@ package pcie_phy_pkg;
     LTSSM_TASK_CFG_LANENUM_WAIT,
     LTSSM_TASK_CFG_LANENUM_ACCEPT,
     LTSSM_TASK_CFG_COMPLETE,
-    LTSSM_TASK_CFG_IDLE
+    LTSSM_TASK_CFG_IDLE,
+    LTSSM_TASK_L0
   } pcie_phy_ltssm_task_e;
 
   //-------------------------------------------------------
