@@ -66,6 +66,14 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
   bit symbol_lock_acquired;
 
   //-------------------------------------------------------
+  // Variable: consec_invalid_rx_count
+  // Self-healing watchdog - mirrors pcie_phy_rc_driver_bfm's identical mechanism. See that
+  // file's version for the full design rationale.
+  //-------------------------------------------------------
+  int unsigned consec_invalid_rx_count;
+  localparam int unsigned MAX_CONSEC_INVALID_RX = 3;
+
+  //-------------------------------------------------------
   // Task: wait_for_reset
   //-------------------------------------------------------
   task wait_for_reset();
@@ -91,6 +99,14 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     ts2_tx_count_complete    = 0;
     idle_tx_count            = 0;
     symbol_lock_acquired     = 1'b0;
+    consec_invalid_rx_count  = 0;
+    ep_ready_polling_config   = 1'b0;
+    ep_ready_linkwidth_start  = 1'b0;
+    ep_ready_linkwidth_accept = 1'b0;
+    ep_ready_lanenum_wait     = 1'b0;
+    ep_ready_lanenum_accept   = 1'b0;
+    ep_ready_complete         = 1'b0;
+    ep_ready_idle             = 1'b0;
   endtask : default_values
 
   // Function: encode_8b10b_symbol
@@ -324,13 +340,22 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
   // lane 0 alone is sufficient, why disparity is derived per-lane from which COM variant
   // each lane's window shows).
   //-------------------------------------------------------
-  task automatic acquire_symbol_lock(output bit [9:0] locked_code [0:PCIE_MAX_LANES-1]);
-    bit [9:0] window [0:PCIE_MAX_LANES-1];
+  task automatic acquire_symbol_lock(output bit [9:0] locked_code [0:PCIE_MAX_LANES-1],
+                                      output bit       found);
+    bit [9:0]    window [0:PCIE_MAX_LANES-1];
+    int unsigned edges_searched;
+
+    //Bounded search - mirrors pcie_phy_rc_driver_bfm's identical fix. See that file's
+    //version for the full design rationale.
+    localparam int unsigned MAX_LOCK_SEARCH_EDGES = 2000;
 
     foreach (window[l]) window[l] = '0;
+    found          = 1'b0;
+    edges_searched = 0;
 
-    forever begin
+    while (edges_searched < MAX_LOCK_SEARCH_EDGES) begin
       @(epCb);
+      edges_searched++;
       for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++)
         window[l] = {epCb.RX_P[l], window[l][9:1]};
 
@@ -341,11 +366,35 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
           else if (window[l] == K_COM_P) rx_lane_disparity[l] = RD_PLUS;
         end
         symbol_lock_acquired = 1'b1;
+        found = 1'b1;
         `uvm_info(name, "Symbol lock acquired (real COM found on lane 0)", UVM_MEDIUM)
         return;
       end
     end
+
+    `uvm_warning(name, $sformatf("acquire_symbol_lock: no COM found within %0d edges - giving up this attempt",
+                                  MAX_LOCK_SEARCH_EDGES))
   endtask : acquire_symbol_lock
+
+  //-------------------------------------------------------
+  // Task: wait_for_partner_ready
+  // Mirrors pcie_phy_rc_driver_bfm's identical task, using epCb. See that file's version
+  // for the full cross-side-transition barrier rationale.
+  //-------------------------------------------------------
+  task automatic wait_for_partner_ready(ref bit partner_flag, input int unsigned max_wait_edges,
+                                         output bit success);
+    int unsigned edges_waited;
+    edges_waited = 0;
+    success = 1'b0;
+    while (edges_waited < max_wait_edges) begin
+      if (partner_flag) begin
+        success = 1'b1;
+        return;
+      end
+      @(epCb);
+      edges_waited++;
+    end
+  endtask : wait_for_partner_ready
 
   task automatic receive_ts(output ts_ordered_set_bytes_t bytes,
                              output bit [7:0]              rx_lane_number [0:PCIE_MAX_LANES-1],
@@ -359,7 +408,15 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
 
     if (!symbol_lock_acquired) begin
       bit [9:0] locked_code [0:PCIE_MAX_LANES-1];
-      acquire_symbol_lock(locked_code);
+      bit       lock_found;
+      acquire_symbol_lock(locked_code, lock_found);
+
+      if (!lock_found) begin
+        valid = 1'b0;
+        foreach (rx_lane_number[l]) rx_lane_number[l] = PAD_SYMBOL;
+        bytes = '0;
+        return;
+      end
 
       for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++) begin
         bit [7:0] decoded_byte;
@@ -419,6 +476,20 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     for (int i = 0; i < 10; i++) bytes.sym6_15_identifier[i] = sym_array[6+i];
 
     if (sym_array[0] != COM_SYMBOL || !is_k_array[0]) valid = 1'b0; //must start with COM
+
+    //Self-healing: mirrors pcie_phy_rc_driver_bfm's identical mechanism.
+    if (!valid) begin
+      consec_invalid_rx_count++;
+      if (consec_invalid_rx_count >= MAX_CONSEC_INVALID_RX) begin
+        `uvm_warning(name, $sformatf("%0d consecutive invalid receptions - forcing symbol re-lock",
+                                      consec_invalid_rx_count))
+        symbol_lock_acquired   = 1'b0;
+        consec_invalid_rx_count = 0;
+      end
+    end
+    else begin
+      consec_invalid_rx_count = 0;
+    end
   endtask : receive_ts
 
   //-------------------------------------------------------
@@ -584,6 +655,10 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     link_latched            = 1'b0;
     configured_link_number  = PAD_SYMBOL;
 
+    //Same fix as RC and as Polling.Configuration - force a fresh comma-search rather than
+    //trusting a phase that may have broken at the prior task's mid-symbol disable fork.
+    symbol_lock_acquired = 1'b0;
+
     fork
       forever drive_ts(OS_TS1, link_latched ? configured_link_number : PAD_SYMBOL,
                         PAD_SYMBOL, 1'b0, ep_agent_cfg_h.default_autonomous_change, ep_agent_cfg_h.default_elbc, ep_agent_cfg_h.default_no_scrambling, ep_agent_cfg_h.default_loopback, ep_agent_cfg_h.default_disable_link, ep_agent_cfg_h.default_hot_reset, 1'b0);
@@ -592,6 +667,12 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     forever begin
       receive_ts(rx_bytes, rx_lane_number, rx_valid);
       ts_attempt_cnt++;
+
+      if (ts_attempt_cnt == 1 || (ts_attempt_cnt % 32) == 0) begin
+        `uvm_info(name, $sformatf("RX (Linkwidth.Start) #%0d: valid=%0d link=0x%0h lane=0x%0h id=0x%0h link_latched=%0d",
+                                   ts_attempt_cnt, rx_valid, rx_bytes.sym1_link_number,
+                                   rx_lane_number[0], rx_bytes.sym6_15_identifier[0], link_latched), UVM_LOW)
+      end
 
       if (!link_latched) begin
         if (rx_valid && rx_bytes.sym1_link_number != PAD_SYMBOL) begin
@@ -612,6 +693,19 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
         end
 
         if (consec_link_match_cnt >= CONSEC_TS_REQUIRED) begin
+          bit barrier_ok;
+          `uvm_info(name, "Configuration.Linkwidth.Start local condition met - waiting for RC", UVM_HIGH)
+          ep_ready_linkwidth_start = 1'b1;
+          wait_for_partner_ready(rc_ready_linkwidth_start, ep_agent_cfg_h.config_timeout_ts_count * TS_OS_LENGTH * 10, barrier_ok);
+          //NOT cleared here anymore - see race condition note where these flags are declared.
+
+          if (!barrier_ok) begin
+            `uvm_error(name, "Configuration.Linkwidth.Start: RC never reached readiness - returning to Detect")
+            disable fork;
+            next_state = DETECT_ST;
+            return;
+          end
+
           `uvm_info(name, "Configuration.Linkwidth.Start complete - advancing to Linkwidth.Accept", UVM_HIGH)
           disable fork; //stop the TX forever loop before leaving this substate
           next_config_substate = CFG_LINKWIDTH_ACCEPT;
@@ -670,6 +764,19 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
           if (rx_lane_number[l] == PAD_SYMBOL) valid_group = 1'b0;
 
         if (valid_group) begin
+          bit barrier_ok;
+          `uvm_info(name, "Configuration.Linkwidth.Accept local condition met - waiting for RC", UVM_HIGH)
+          ep_ready_linkwidth_accept = 1'b1;
+          wait_for_partner_ready(rc_ready_linkwidth_accept, ep_agent_cfg_h.config_timeout_ts_count * TS_OS_LENGTH * 10, barrier_ok);
+          //NOT cleared here anymore - see race condition note where these flags are declared.
+
+          if (!barrier_ok) begin
+            `uvm_error(name, "Configuration.Linkwidth.Accept: RC never reached readiness - returning to Detect")
+            disable fork;
+            next_state = DETECT_ST;
+            return;
+          end
+
           `uvm_info(name, $sformatf("Valid Lane group received (reversal=%0b) - advancing to Lanenum.Wait",
                                      use_reversal), UVM_HIGH)
           disable fork;
@@ -837,6 +944,19 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
 
       if (ts2_tx_count_complete >= MIN_TS2_TX_COMPLETE &&
           consec_rx_match_cnt   >= CONSEC_TS2_COMPLETE) begin
+        bit barrier_ok;
+        `uvm_info(name, "Polling.Configuration local condition met - waiting for RC", UVM_HIGH)
+        ep_ready_polling_config = 1'b1;
+        wait_for_partner_ready(rc_ready_polling_config, ep_agent_cfg_h.config_timeout_ts_count * TS_OS_LENGTH * 10, barrier_ok);
+        //NOT cleared here anymore - see race condition note where these flags are declared.
+
+        if (!barrier_ok) begin
+          `uvm_error(name, "Polling.Configuration: RC never reached readiness - returning to Detect")
+          disable fork;
+          next_state = DETECT_ST;
+          return;
+        end
+
         `uvm_info(name, "Polling.Configuration complete - advancing to Configuration", UVM_HIGH)
         disable fork;
         next_state = CONFIG_ST;
@@ -931,6 +1051,19 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
         consec_match_cnt = valid_lane_group ? consec_match_cnt + 1 : 0;
 
         if (consec_match_cnt >= CONSEC_TS_REQUIRED) begin
+          bit barrier_ok;
+          `uvm_info(name, "Configuration.Lanenum.Wait local condition met - waiting for RC", UVM_HIGH)
+          ep_ready_lanenum_wait = 1'b1;
+          wait_for_partner_ready(rc_ready_lanenum_wait, ep_agent_cfg_h.config_timeout_ts_count * TS_OS_LENGTH * 10, barrier_ok);
+          //NOT cleared here anymore - see race condition note where these flags are declared.
+
+          if (!barrier_ok) begin
+            `uvm_error(name, "Configuration.Lanenum.Wait: RC never reached readiness - returning to Detect")
+            disable fork;
+            next_state = DETECT_ST;
+            return;
+          end
+
           `uvm_info(name, "Configuration.Lanenum.Wait completed", UVM_HIGH)
           disable fork;
           next_config_substate = CFG_LANENUM_ACCEPT;
@@ -990,6 +1123,19 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
         consec_match_cnt = valid_group ? consec_match_cnt + 1 : 0;
 
         if (consec_match_cnt >= CONSEC_TS_REQUIRED) begin
+          bit barrier_ok;
+          `uvm_info(name, "Configuration.Lanenum.Accept local condition met - waiting for RC", UVM_HIGH)
+          ep_ready_lanenum_accept = 1'b1;
+          wait_for_partner_ready(rc_ready_lanenum_accept, ep_agent_cfg_h.config_timeout_ts_count * TS_OS_LENGTH * 10, barrier_ok);
+          //NOT cleared here anymore - see race condition note where these flags are declared.
+
+          if (!barrier_ok) begin
+            `uvm_error(name, "Configuration.Lanenum.Accept: RC never reached readiness - returning to Detect")
+            disable fork;
+            next_state = DETECT_ST;
+            return;
+          end
+
           `uvm_info(name, "Lane Number negotiation accepted", UVM_HIGH)
           disable fork;
           next_config_substate = CFG_COMPLETE;
@@ -1066,6 +1212,19 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
         consec_ts2_cnt = valid_group ? consec_ts2_cnt + 1 : 0;
 
         if (consec_ts2_cnt >= CONSEC_TS_REQUIRED) begin
+          bit barrier_ok;
+          `uvm_info(name, "Configuration.Complete local condition met - waiting for RC", UVM_HIGH)
+          ep_ready_complete = 1'b1;
+          wait_for_partner_ready(rc_ready_complete, ep_agent_cfg_h.config_timeout_ts_count * TS_OS_LENGTH * 10, barrier_ok);
+          //NOT cleared here anymore - see race condition note where these flags are declared.
+
+          if (!barrier_ok) begin
+            `uvm_error(name, "Configuration.Complete: RC never reached readiness - returning to Detect")
+            disable fork;
+            next_state = DETECT_ST;
+            return;
+          end
+
           `uvm_info(name, "Configuration.Complete Finished", UVM_HIGH)
           disable fork;
           next_config_substate = CFG_IDLE;
@@ -1115,6 +1274,19 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
       local_idle_rx_count = all_lanes_idle ? local_idle_rx_count + 1 : 0;
 
       if ((local_idle_rx_count >= MIN_IDLE_RX) && (local_idle_tx_count >= MIN_IDLE_TX)) begin
+        bit barrier_ok;
+        `uvm_info(name, "Configuration.Idle local condition met - waiting for RC", UVM_HIGH)
+        ep_ready_idle = 1'b1;
+        wait_for_partner_ready(rc_ready_idle, ep_agent_cfg_h.config_timeout_ts_count * TS_OS_LENGTH * 10, barrier_ok);
+        //NOT cleared here anymore - see race condition note where these flags are declared.
+
+        if (!barrier_ok) begin
+          `uvm_error(name, "Configuration.Idle: RC never reached readiness - returning to Detect")
+          disable fork;
+          next_state = DETECT_ST;
+          return;
+        end
+
         `uvm_info(name, "Configuration.Idle completed - Link Up (L0)", UVM_LOW)
         disable fork;
         next_state = L0_ST;

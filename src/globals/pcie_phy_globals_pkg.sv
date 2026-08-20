@@ -644,6 +644,63 @@ package pcie_phy_pkg;
   //-------------------------------------------------------
   bit recovery_request;
 
+  //-------------------------------------------------------
+  // Cross-side transition barrier flags (Configuration substates)
+  //
+  // Root cause this fixes: each side's task previously tore down its own TX thread
+  // (disable fork) the instant ITS OWN local exit condition was met, with no regard for
+  // whether the partner had finished receiving against the OLD content yet. Since the two
+  // sides' exit conditions are not equally hard to satisfy (e.g. EP's Linkwidth.Start check
+  // is structurally easier than RC's), one side would routinely finish and move to
+  // completely different content while the other was still deep in its own receive loop -
+  // corrupting that side's symbol lock with no way to recover, since the content it was
+  // chasing had genuinely stopped being sent.
+  //
+  // Fix: each side sets its OWN flag once its local condition is met, then blocks on the
+  // PARTNER's flag before disabling its TX fork - keeping the SAME content flowing the
+  // whole time it waits. This bounds the handoff skew to roughly one TS-reception-cycle
+  // instead of an unbounded amount, and both sides remain on compatible content throughout.
+  //
+  // Named per-substate (not a single generic counter) because retry loops - e.g.
+  // Lanenum.Accept looping back to Lanenum.Wait on a smaller-link renegotiation - mean the
+  // two sides do not always take the same number of steps, so a shared monotonic counter
+  // would not stay meaningfully aligned across a retry.
+  //
+  // IMPORTANT - flags are set but deliberately NEVER cleared after use (originally they
+  // were cleared immediately after the wait unblocked - that had a genuine race: if side A
+  // reaches its condition first, sets its flag, and starts waiting, side B may reach its own
+  // condition, see A's flag, succeed, and clear ITS OWN flag again almost instantly - all
+  // within a single clock edge on B's side. If A's own poll (running on A's independent
+  // clock edges) hadn't yet checked during that exact window, A could miss ever seeing B's
+  // flag true at all, and time out despite B having genuinely succeeded. Confirmed directly:
+  // RC completed successfully while EP's identical wait for RC's flag timed out, in the same
+  // run, on the same barrier. Since none of these states are re-entered within a single
+  // successful training run (only a full default_values() reset would revisit them), leaving
+  // the flags set once used is safe and removes the race entirely - whichever side sets its
+  // flag first, it simply stays visible for the other to find, no matter how much later.
+  //-------------------------------------------------------
+  //Polling.Configuration also needs this barrier - it's the same class of race as the
+  //Configuration substates below, just one boundary earlier. Confirmed by direct evidence:
+  //EP finished and moved to Configuration.Linkwidth while RC was still deep in its own
+  //Polling.Configuration receive loop, and RC never recovered for the rest of its timeout
+  //window - the self-healing watchdog alone wasn't enough here because the content EP was
+  //now sending genuinely didn't match what RC's still-active task was looking for.
+  bit rc_ready_polling_config;
+  bit ep_ready_polling_config;
+
+  bit rc_ready_linkwidth_start;
+  bit ep_ready_linkwidth_start;
+  bit rc_ready_linkwidth_accept;
+  bit ep_ready_linkwidth_accept;
+  bit rc_ready_lanenum_wait;
+  bit ep_ready_lanenum_wait;
+  bit rc_ready_lanenum_accept;
+  bit ep_ready_lanenum_accept;
+  bit rc_ready_complete;
+  bit ep_ready_complete;
+  bit rc_ready_idle;
+  bit ep_ready_idle;
+
   //Enum: recovery_reason_e
   //Published by run_l0() alongside next_state=RECOVERY_ST so the caller (and any log/coverage
   //consumer) knows WHY Recovery was entered - real PCIe hardware distinguishes these too, not

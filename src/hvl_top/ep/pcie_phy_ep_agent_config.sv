@@ -1,4 +1,3 @@
-
 `ifndef PCIE_PHY_EP_AGENT_CONFIG_INCLUDED_
 `define PCIE_PHY_EP_AGENT_CONFIG_INCLUDED_
  
@@ -17,7 +16,9 @@ class pcie_phy_ep_agent_config extends uvm_object;
  
   int detect_timeout_cycles = 24;
 
-  int config_timeout_ts_count = 2;  
+  int config_timeout_ts_count = 50; //was 2 - see pcie_phy_rc_agent_config.sv for rationale,
+                                     //mirrors the identical fix there
+  
   //-------------------------------------------------------
   // Link capability (advertised)
   //-------------------------------------------------------
@@ -157,4 +158,3 @@ function void pcie_phy_ep_agent_config::do_print(uvm_printer printer);
 endfunction : do_print
  
 `endif
-
