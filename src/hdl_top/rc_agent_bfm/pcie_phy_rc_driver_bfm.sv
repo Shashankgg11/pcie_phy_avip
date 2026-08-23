@@ -45,15 +45,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
   pcie_gen_e   current_speed;
   data_transfer_mode_e transfer_mode; //resolved once at L0 entry - see run_l0()
 
-  //-------------------------------------------------------
-  // Speed-change tracking, matching the reference state table exactly:
-  //   directed_speed_change  - RC sets this internally; THE trigger. EP never sets this
-  //                            independently - only RC (the initiator) decides to climb.
-  //   current_rate           - snapshot of current_speed at the moment L0 was entered.
-  //   changed_speed_recovery / successful_speed_negotiation - both stay 0 here; only
-  //                            Recovery.Speed (not yet built) sets these once the actual
-  //                            TS1-with-speed_change-bit handshake completes.
-  //-------------------------------------------------------
+  // speed-change bookkeeping - RC decides when to climb, EP just follows
   bit        directed_speed_change;
   pcie_gen_e current_rate;
   bit        changed_speed_recovery;
@@ -71,33 +63,15 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
   //Each active lane's OWN running disparity for its 8b/10b DECODER (RX side).
   running_disparity_e rx_lane_disparity [0:PCIE_MAX_LANES-1];
 
-  //-------------------------------------------------------
-  // Variable: symbol_lock_acquired
-  // Real symbol/bit-boundary alignment, once found, persists for the rest of this run until
-  // an explicit reset (default_values() clears it back to 0). Our own drive_ts()/drive_idle()
-  // serialize every active lane bit-for-bit in lockstep (same clock edge, same bit
-  // position) - the partner side models the same symmetrically - so finding alignment via
-  // lane 0 alone is sufficient; no need to search each lane independently.
-  //-------------------------------------------------------
+  // symbol alignment, once found, stays valid until reset() - lane 0 is enough
+  // since all lanes are driven in lockstep
   bit symbol_lock_acquired;
 
-  //-------------------------------------------------------
-  // Variable: consec_invalid_rx_count
-  // Self-healing watchdog: tracks consecutive invalid receive_ts() decodes ACROSS calls. A
-  // broken symbol_lock_acquired phase (from a partner's mid-symbol disable fork at ANY
-  // point, not just our own task-entry boundaries) otherwise produces garbage forever, since
-  // receive_ts never re-searches once locked. This forces a re-acquire once sustained
-  // invalid decoding is detected.
-  //-------------------------------------------------------
+  // counts back-to-back bad decodes - forces a re-lock if alignment quietly breaks
   int unsigned consec_invalid_rx_count;
   localparam int unsigned MAX_CONSEC_INVALID_RX = 3;
 
-  //-------------------------------------------------------
-  // L0 data-phase queues. NOTE: no full sequencer/item integration exists for the data
-  // phase yet - a test/sequence can call push_tlp()/push_dllp()/push_flit_payload()
-  // directly on this driver_bfm's virtual interface handle to enqueue real data for
-  // run_l0() to send.
-  //-------------------------------------------------------
+  // L0 TX queues - no sequencer hookup yet, push data via push_tlp/push_dllp/push_flit_payload
   typedef bit [7:0] byte_queue_t [$];
   typedef bit [7:0] flit_payload_t [0:FLIT_TLP_PAYLOAD_BYTES-1];
 
@@ -105,24 +79,19 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
   byte_queue_t    dllp_tx_queue [$];
   flit_payload_t  flit_tx_queue [$];
 
-  //-------------------------------------------------------
-  // LTSSM state-tracking variables - persistent module-level vars (not task outputs),
-  // matching the convention already used throughout this file.
-  //-------------------------------------------------------
+  // current/next LTSSM state tracking
   ltssm_state_e      current_state;
   ltssm_state_e      next_state;
   recovery_reason_e  next_recovery_reason;
   recovery_substate_e current_recovery_substate;
   recovery_substate_e next_recovery_substate;
 
-  //Set once Recovery.Equalization genuinely completes at the CURRENT speed - checked so a
-  //later Recovery cycle at a HIGHER speed (another step up SPEED_UPGRADE_SEQUENCE) knows
-  //equalization needs redoing at the new speed, not skipped.
+  // set once equalization completes at the current speed - a later speed bump
+  // clears this so equalization gets redone
   bit equalization_done_this_speed;
 
-  //Tx Preset (Phase 0) - RC picks this, sends it to EP, and must see EP echo it back before
-  //Phase 0 is considered complete. Persisted at interface scope so the RX-side check in the
-  //same task call can compare against exactly what the TX-side fork actually sent.
+  // Tx preset RC picks for Phase 0 - kept at interface scope so the RX check
+  // can compare against what we actually sent
   bit [7:0] negotiated_tx_preset;
   detect_substate_e  current_detect_substate;
   detect_substate_e  next_detect_substate;
@@ -423,26 +392,19 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
                                   MAX_LOCK_SEARCH_EDGES))
   endtask : acquire_symbol_lock
 
-  //-------------------------------------------------------
-  // Task: wait_for_partner_ready
-  // Bounded poll for a partner-side barrier flag. Called from the SAME process as the main
-  // receive loop, NOT forked - the TX thread (a separate fork...join_none process) keeps
-  // running the whole time this polls, which is the entire point: don't tear down TX until
-  // the partner is also ready. success=0 if the partner never signals within max_wait_edges
-  // clock edges - the caller's own existing timeout remains the real backstop.
-  //-------------------------------------------------------
-  task automatic wait_for_partner_ready(ref bit partner_flag, input int unsigned max_wait_edges,
+  // waits for the partner's ready flag without killing our own TX loop, so both
+  // sides stay on matching content until they're both ready to move on
+  task automatic wait_for_partner_ready(ref bit partner_flag, input time max_wait_time,
                                          output bit success);
-    int unsigned edges_waited;
-    edges_waited = 0;
+    time start_time;
+    start_time = $time;
     success = 1'b0;
-    while (edges_waited < max_wait_edges) begin
+    while (($time - start_time) < max_wait_time) begin
       if (partner_flag) begin
         success = 1'b1;
         return;
       end
       @(rcCb);
-      edges_waited++;
     end
   endtask : wait_for_partner_ready
 
@@ -544,19 +506,8 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
   endtask : receive_ts
 
-  //-------------------------------------------------------
-  // Task: drive_modified_ts
-  // Modified TS1/TS2 (128b/130b, Gen3+) equivalent of drive_ts. SCOPE NOTE: real 128b/130b
-  // uses block encoding, not 8b/10b - no such encoder exists in this file, so this reuses
-  // the existing encode_8b10b_symbol()/drive_symbol_stream() machinery as a structural
-  // stand-in, same honesty boundary as everywhere else speed-dependent encoding comes up.
-  // Content/framing is correct (16 bytes: 7 real + parity + replica + parity), bit-level
-  // encoding is not bit-accurate above Gen2.
-  //
-  // Unlike drive_ts, there is NO COM symbol and NO K-codes anywhere in this Ordered Set -
-  // every one of the 16 bytes is an ordinary D-code, matching the real format (Modified TS
-  // is identified by its ID byte value alone, not a comma).
-  //-------------------------------------------------------
+  // sends Modified TS1/TS2 (Gen3+) - reuses the 8b/10b encoder as a stand-in for
+  // real 128b/130b, but framing (parity + replica) is accurate. No COM/K-codes here.
   task automatic drive_modified_ts(input modified_ts_bytes_t content);
     bit [7:0] stream [];
     bit       is_k   [];
@@ -585,15 +536,8 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     drive_symbol_stream(stream, is_k);
   endtask : drive_modified_ts
 
-  //-------------------------------------------------------
-  // Task: receive_modified_ts
-  // Samples 16 fixed 10-bit windows blind (no comma search - real 128b/130b uses block sync
-  // rather than per-symbol commas, and this side's bit alignment is already locked from the
-  // standard-format exchange that necessarily preceded it), decodes each as a plain D-code,
-  // reconstructs the logical content struct, and validates both parity bytes and the
-  // replica match the primary copy. valid=0 if either check fails or any individual symbol
-  // failed its own 8b/10b decode.
-  //-------------------------------------------------------
+  // reads 16 fixed symbols, no comma search needed since we're already locked -
+  // checks both parity bytes and the replica match
   task automatic receive_modified_ts(output modified_ts_bytes_t content, output bit valid);
     bit [7:0] rx_byte [0:15];
     bit       rx_ok   [0:15];
@@ -677,6 +621,30 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
   task automatic receive_idle(output bit [7:0] rx_byte [0:PCIE_MAX_LANES-1],
                                output bit       rx_ok   [0:PCIE_MAX_LANES-1]);
     bit [9:0] rx_encoded [0:PCIE_MAX_LANES-1];
+    bit       all_ok;
+
+    //If the watchdog (below) forced a re-lock, actually perform it here - unlike
+    //receive_ts(), this task has no other caller that would do this search on its behalf.
+    if (!symbol_lock_acquired) begin
+      bit [9:0] locked_code [0:PCIE_MAX_LANES-1];
+      bit       lock_found;
+      acquire_symbol_lock(locked_code, lock_found);
+      if (!lock_found) begin
+        foreach (rx_ok[l]) rx_ok[l] = 1'b0;
+        foreach (rx_byte[l]) rx_byte[l] = '0;
+        return;
+      end
+      //locked_code IS this symbol's content - use it directly rather than re-sampling
+      //(re-sampling would consume the NEXT symbol's bits instead).
+      for (int l = 0; l < rc_agent_cfg_h.active_lanes; l++) begin
+        bit decoded_is_k;
+        decode_8b10b_symbol(locked_code[l], rx_lane_disparity[l], rx_byte[l], decoded_is_k, rx_ok[l]);
+        rx_lane_disparity[l] = next_running_disparity(locked_code[l], rx_lane_disparity[l]);
+        if (!rx_ok[l] || decoded_is_k) rx_ok[l] = 1'b0;
+      end
+      consec_invalid_rx_count = 0; //fresh lock - don't immediately re-trip the watchdog
+      return;
+    end
 
     for (int b = 0; b < 10; b++) begin
       @(rcCb);
@@ -684,10 +652,27 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
         rx_encoded[l][b] = rcCb.RX_P[l];
     end
 
+    all_ok = 1'b1;
     for (int l = 0; l < rc_agent_cfg_h.active_lanes; l++) begin
       bit decoded_is_k;
       decode_8b10b_symbol(rx_encoded[l], rx_lane_disparity[l], rx_byte[l], decoded_is_k, rx_ok[l]);
       rx_lane_disparity[l] = next_running_disparity(rx_encoded[l], rx_lane_disparity[l]);
+      if (!rx_ok[l] || decoded_is_k) all_ok = 1'b0; //Idle symbols are always plain D-codes
+    end
+
+    // same re-lock watchdog as receive_ts() - used to be missing here, which is
+    // what stuck RC in Configuration.Idle
+    if (!all_ok) begin
+      consec_invalid_rx_count++;
+      if (consec_invalid_rx_count >= MAX_CONSEC_INVALID_RX) begin
+        `uvm_warning(name, $sformatf("%0d consecutive invalid Idle receptions - forcing symbol re-lock",
+                                      consec_invalid_rx_count))
+        symbol_lock_acquired    = 1'b0;
+        consec_invalid_rx_count = 0;
+      end
+    end
+    else begin
+      consec_invalid_rx_count = 0;
     end
   endtask : receive_idle
 
@@ -723,9 +708,9 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     return 1'b1;
   endfunction : detect_lane_reversal
 
-  //---------------------------------------------------------------------------------------------------------------------------------
+  //-------------------------------------------------------
   //    DETECT
-  //---------------------------------------------------------------------------------------------------------------------------------
+  //-------------------------------------------------------
   task automatic run_detect_quiet();
     `uvm_info(name, "Entering Detect.Quiet", UVM_MEDIUM)
 
@@ -797,9 +782,9 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
   endtask : run_detect_active
 
-  //---------------------------------------------------------------------------------------------------------------------------------
+  //-------------------------------------------------------
   //    CONFIGURATION.LINKWIDTH
-  //---------------------------------------------------------------------------------------------------------------------------------
+  //-------------------------------------------------------
   task automatic run_linkwidth_start();
     ts_ordered_set_bytes_t rx_bytes;
     bit [7:0]               rx_lane_number [0:PCIE_MAX_LANES-1];
@@ -844,7 +829,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
                                    rx_bytes.sym6_15_identifier[0], configured_link_number), UVM_LOW)
         `uvm_info(name, "Configuration.Linkwidth.Start local condition met - waiting for EP", UVM_HIGH)
         rc_ready_linkwidth_start = 1'b1;
-        wait_for_partner_ready(ep_ready_linkwidth_start, rc_agent_cfg_h.config_timeout_ts_count * TS_OS_LENGTH * 10, barrier_ok);
+        wait_for_partner_ready(ep_ready_linkwidth_start, time'(TIMEOUT_LINKWIDTH_MS * 1ms), barrier_ok);
         //NOT cleared here anymore - see race condition note where these flags are declared.
 
         if (!barrier_ok) begin
@@ -912,7 +897,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
                                      rx_lane_number[0], rx_lane_number[1], rx_lane_number[2], rx_lane_number[3]), UVM_LOW)
           `uvm_info(name, "Configuration.Linkwidth.Accept local condition met - waiting for EP", UVM_HIGH)
           rc_ready_linkwidth_accept = 1'b1;
-          wait_for_partner_ready(ep_ready_linkwidth_accept, rc_agent_cfg_h.config_timeout_ts_count * TS_OS_LENGTH * 10, barrier_ok);
+          wait_for_partner_ready(ep_ready_linkwidth_accept, time'(TIMEOUT_LINKWIDTH_MS * 1ms), barrier_ok);
           //NOT cleared here anymore - see race condition note where these flags are declared.
 
           if (!barrier_ok) begin
@@ -941,9 +926,9 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
   endtask : run_linkwidth_accept
 
-  //---------------------------------------------------------------------------------------------------------------------------------
+  //-------------------------------------------------------
   //    CONFIGURATION.LANENUM    [NEW]
-  //---------------------------------------------------------------------------------------------------------------------------------
+  //-------------------------------------------------------
   task automatic run_configuration_lanenum_wait();
     ts_ordered_set_bytes_t rx_bytes;
     bit [7:0]               rx_lane_number [0:PCIE_MAX_LANES-1];
@@ -987,7 +972,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
                                      configured_link_number, configured_lane_number[0]), UVM_LOW)
           `uvm_info(name, "Configuration.Lanenum.Wait local condition met - waiting for EP", UVM_HIGH)
           rc_ready_lanenum_wait = 1'b1;
-          wait_for_partner_ready(ep_ready_lanenum_wait, rc_agent_cfg_h.config_timeout_ts_count * TS_OS_LENGTH * 10, barrier_ok);
+          wait_for_partner_ready(ep_ready_lanenum_wait, time'(TIMEOUT_LANENUM_MS * 1ms), barrier_ok);
           //NOT cleared here anymore - see race condition note where these flags are declared.
 
           if (!barrier_ok) begin
@@ -1067,7 +1052,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
                                      configured_link_number, configured_lane_number[0]), UVM_LOW)
           `uvm_info(name, "Configuration.Lanenum.Accept local condition met - waiting for EP", UVM_HIGH)
           rc_ready_lanenum_accept = 1'b1;
-          wait_for_partner_ready(ep_ready_lanenum_accept, rc_agent_cfg_h.config_timeout_ts_count * TS_OS_LENGTH * 10, barrier_ok);
+          wait_for_partner_ready(ep_ready_lanenum_accept, time'(TIMEOUT_LANENUM_MS * 1ms), barrier_ok);
           //NOT cleared here anymore - see race condition note where these flags are declared.
 
           if (!barrier_ok) begin
@@ -1118,9 +1103,9 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
   endtask : run_configuration_lanenum_accept
 
-  //---------------------------------------------------------------------------------------------------------------------------------
+  //-------------------------------------------------------
   //    CONFIGURATION.COMPLETE / IDLE    [NEW]
-  //---------------------------------------------------------------------------------------------------------------------------------
+  //-------------------------------------------------------
   task automatic run_configuration_complete();
     ts_ordered_set_bytes_t rx_bytes;
     bit [7:0]               rx_lane_number [0:PCIE_MAX_LANES-1];
@@ -1165,7 +1150,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
                                      rx_bytes.sym6_15_identifier[0]), UVM_LOW)
           `uvm_info(name, "Configuration.Complete local condition met - waiting for EP", UVM_HIGH)
           rc_ready_complete = 1'b1;
-          wait_for_partner_ready(ep_ready_complete, rc_agent_cfg_h.config_timeout_ts_count * TS_OS_LENGTH * 10, barrier_ok);
+          wait_for_partner_ready(ep_ready_complete, time'(TIMEOUT_COMPLETE_MS * 1ms), barrier_ok);
           //NOT cleared here anymore - see race condition note where these flags are declared.
 
           if (!barrier_ok) begin
@@ -1199,6 +1184,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     bit          rx_ok   [0:PCIE_MAX_LANES-1];
     bit          all_lanes_idle;
     int unsigned idle_attempt_cnt;
+    time         start_time;
 
     `uvm_info(name, "Entering Configuration.Idle", UVM_MEDIUM)
 
@@ -1208,6 +1194,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     idle_rx_count     = 0;
     idle_tx_count     = 0;
     idle_attempt_cnt  = 0;
+    start_time        = $time;
 
     fork
       forever begin
@@ -1230,7 +1217,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
         bit barrier_ok;
         `uvm_info(name, "Configuration.Idle local condition met - waiting for EP", UVM_HIGH)
         rc_ready_idle = 1'b1;
-        wait_for_partner_ready(ep_ready_idle, rc_agent_cfg_h.config_timeout_ts_count * TS_OS_LENGTH * 10, barrier_ok);
+        wait_for_partner_ready(ep_ready_idle, time'(TIMEOUT_IDLE_MS * 1ms), barrier_ok);
         //NOT cleared here anymore - see race condition note where these flags are declared.
 
         if (!barrier_ok) begin
@@ -1251,12 +1238,9 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
         return;
       end
 
-      if (idle_attempt_cnt >= rc_agent_cfg_h.config_timeout_ts_count) begin
+      if (($time - start_time) >= (TIMEOUT_IDLE_MS * 1ms)) begin
         `uvm_error(name, "Configuration.Idle Timeout")
         disable fork;
-        //NOTE: Recovery states (RECOVERY_RCVR_LOCK etc.) don't exist in this file yet -
-        //returning to Detect for now rather than a dead-end Recovery jump. Revisit once
-        //Recovery is built out.
         next_state            = DETECT_ST;
         next_detect_substate  = DETECT_QUIET;
         idle_tx_count = 0;
@@ -1266,9 +1250,9 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
   endtask : run_configuration_idle
 
-  //---------------------------------------------------------------------------------------------------------------------------------
+  //-------------------------------------------------------
   //    POLLING ACTIVE   [FIXED - real RX loop added, timeout units fixed]
-  //---------------------------------------------------------------------------------------------------------------------------------
+  //-------------------------------------------------------
   task automatic run_polling_active();
     int unsigned            consec_rx_match_cnt;
     time                    start_time;
@@ -1362,13 +1346,8 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
   endtask : run_polling_active
 
-  //---------------------------------------------------------------------------------------------------------------------------------
-  //    POLLING COMPLIANCE   [NEW]
-  //---------------------------------------------------------------------------------------------------------------------------------
-  // No logical exit condition of its own per spec - sends a Compliance Pattern
-  // indefinitely; only leaves via an external event, modeled here via the package-global
-  // exit_compliance_req flag (set externally), consumed (reset to 0) on exit.
-  //---------------------------------------------------------------------------------------------------------------------------------
+  // ---- Polling.Compliance ----
+  // no built-in exit condition - stays here until exit_compliance_req is set externally
   task automatic run_polling_compliance();
     int unsigned compliance_pattern_count;
 
@@ -1379,9 +1358,8 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     compliance_pattern_count  = 0;
 
     forever begin
-      //Placeholder framing: a real Compliance Pattern is a fixed scrambled bit sequence,
-      //not a TS - driven here as tagged TS1-shaped send purely for symbol-level timing
-      //until a dedicated compliance-pattern generator exists.
+      // placeholder - real Compliance Pattern is a scrambled bit sequence, not
+      // a TS; using TS1 shape here just for timing until this gets built out
       drive_ts(OS_TS1, PAD_SYMBOL, PAD_SYMBOL,
                 1'b0, rc_agent_cfg_h.default_autonomous_change, rc_agent_cfg_h.default_elbc,
                 rc_agent_cfg_h.default_no_scrambling, rc_agent_cfg_h.default_loopback,
@@ -1398,9 +1376,9 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
   endtask : run_polling_compliance
 
-  //---------------------------------------------------------------------------------------------------------------------------------
+  //-------------------------------------------------------
   //    POLLING CONFIGURE   [FIXED - real RX loop added, timeout units fixed]
-  //---------------------------------------------------------------------------------------------------------------------------------
+  //-------------------------------------------------------
   task automatic run_polling_configuration();
     time start_time;
     bit  first_ts2_received;
@@ -1461,7 +1439,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
         bit barrier_ok;
         `uvm_info(name, "Polling.Configuration local condition met - waiting for EP", UVM_HIGH)
         rc_ready_polling_config = 1'b1;
-        wait_for_partner_ready(ep_ready_polling_config, rc_agent_cfg_h.config_timeout_ts_count * TS_OS_LENGTH * 10, barrier_ok);
+        wait_for_partner_ready(ep_ready_polling_config, time'(2 * POLLING_TIMEOUT_MS * 1ms), barrier_ok);
         //NOT cleared here anymore - see race condition note where these flags are declared.
 
         if (!barrier_ok) begin
@@ -1496,10 +1474,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
   endtask : run_polling_configuration
 
-  //---------------------------------------------------------------------------------------------------------------------------------
-  //    L0 - data phase   [NEW]
-  //---------------------------------------------------------------------------------------------------------------------------------
-  //---------------------------------------------------------------------------------------------------------------------------------
+  // ---- L0: data phase ----
 
   //-------------------------------------------------------
   // Task: drive_symbol_stream
@@ -1811,9 +1786,9 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
   endtask : run_l0
 
-  //---------------------------------------------------------------------------------------------------------------------------------
+  //-------------------------------------------------------
   //    RECOVERY   [NEW]
-  //---------------------------------------------------------------------------------------------------------------------------------
+  //-------------------------------------------------------
 
   task automatic run_recovery_rcvr_lock();
     ts_ordered_set_bytes_t rx_bytes;
@@ -1835,11 +1810,8 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     consec_rx_match_cnt = 0;
     start_time          = $time;
 
-    //-------------------------------------------------------
-    // Modified TS format once operating at Gen3+ - speed-based, not visit-based: a link
-    // already at Gen3+ (e.g. climbing Gen3->Gen4) stays on Modified TS continuously, it does
-    // not revert to standard format just because another speed step is starting.
-    //-------------------------------------------------------
+    // Gen3+ stays on Modified TS the whole time - doesn't drop back to standard
+    // format just because another speed step is starting
     if (current_speed >= EQ_REQUIRED_MIN_GEN) begin
       mod_tx_content.id           = MOD_TS1_ID;
       mod_tx_content.link_number  = configured_link_number;
@@ -1983,10 +1955,8 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
 
         if (consec_ts2_cnt >= CONSEC_TS_COUNT) begin
           disable fork;
-          //Already at/above EQ_REQUIRED_MIN_GEN and using Modified TS - equalization for
-          //THIS speed was already completed before reaching here (Phase 3 is what routes
-          //back into RcvrLock/RcvrCfg in the first place), so the only remaining question
-          //is whether another speed step is still needed.
+          // already equalized for this speed (Phase 3 handles that) - just check
+          // if another speed step is needed
           need_another_speed_step = (current_speed != rc_agent_cfg_h.target_link_speed);
           if (need_another_speed_step) begin
             `uvm_info(name, "Recovery.RcvrCfg (Modified TS) complete - another speed step needed, advancing to Recovery.Speed", UVM_HIGH)
@@ -2117,13 +2087,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     next_recovery_substate = RECOVERY_RCVR_LOCK;
   endtask : run_recovery_speed
 
-  //-------------------------------------------------------
-  // Task: run_recovery_eq_phase0
-  // EC=01b. RC picks a Tx Preset for EP's transmitter and sends it via Modified TS2; EP
-  // applies it and echoes the same preset value back via Modified TS1. Exit requires seeing
-  // that echo match, not just any Modified TS1 arriving - this is what "preset loading"
-  // actually verifies.
-  //-------------------------------------------------------
+  // Phase 0 (EC=01b): RC sends a Tx preset, EP must echo it back before we move on
   task automatic run_recovery_eq_phase0();
     modified_ts_bytes_t tx_content;
     modified_ts_bytes_t rx_content;
@@ -2136,9 +2100,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     current_state             = RECOVERY_ST;
     current_recovery_substate = RECOVERY_EQ_PHASE0;
 
-    //Representative default preset value - real preset selection is an analog/BER-driven
-    //decision this file has no model for; taken as a fixed, reasonable default (P5, a common
-    //real-world starting point) rather than computed.
+    // fixed default preset (P5) - real selection is BER-driven, not modeled here
     negotiated_tx_preset = 8'h53;
 
     consec_match_cnt = 0;
@@ -2187,13 +2149,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
   endtask : run_recovery_eq_phase0
 
-  //-------------------------------------------------------
-  // Task: run_recovery_eq_phase1
-  // EC=01b - SAME wire value as Phase 0. The two are distinguished by LTSSM-internal
-  // behavior only: Phase 0 = preset loading, Phase 1 = FS/LF (full swing / low frequency)
-  // calibration, both sides now settled at the new speed and both sending Modified TS1
-  // (not TS2 - RC no longer needs to be the one initiating with TS2 here).
-  //-------------------------------------------------------
+  // Phase 1 (EC=01b, same as Phase 0): FS/LF calibration, both sides now on TS1
   task automatic run_recovery_eq_phase1();
     modified_ts_bytes_t tx_content;
     modified_ts_bytes_t rx_content;
@@ -2252,15 +2208,8 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
   endtask : run_recovery_eq_phase1
 
-  //-------------------------------------------------------
-  // Task: run_recovery_eq_phase2
-  // EC=10b. RC iteratively adjusts EP's Tx coefficients: sends a coefficient
-  // Increment/Decrement/Hold request, EP applies it and reports the resulting status back.
-  // Real hardware iterates until RC's measured BER is satisfied - no BER model exists here,
-  // so this is a bounded round count standing in for that convergence loop, same
-  // simplification used everywhere else in this file where an analog quality threshold
-  // would otherwise gate the exit.
-  //-------------------------------------------------------
+  // Phase 2 (EC=10b): RC adjusts EP's Tx coefficients - bounded rounds stand in
+  // for a real BER-driven convergence loop
   task automatic run_recovery_eq_phase2();
     modified_ts_bytes_t tx_content;
     modified_ts_bytes_t rx_content;
@@ -2293,9 +2242,8 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     forever begin
       receive_modified_ts(rx_content, rx_valid);
 
-      //Accepts any coefficient status EP reports, as long as it's genuinely acknowledging
-      //Phase 2 (EC matches) - the actual coefficient VALUE isn't checked since there's no
-      //real BER convergence model to validate it against.
+      // accepts any coefficient status EP reports for Phase 2 - value itself
+      // isn't checked since there's no real BER model to validate against
       if (rx_valid && rx_content.id == MOD_TS1_ID &&
           rx_content.ec_byte == EC_PHASE2 &&
           rx_content.link_number == configured_link_number) begin
@@ -2323,14 +2271,7 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     end
   endtask : run_recovery_eq_phase2
 
-  //-------------------------------------------------------
-  // Task: run_recovery_eq_phase3
-  // EC=11b. Roles reverse from Phase 2 - EP is now the one issuing coefficient requests for
-  // RC's Tx, RC applies and reports status. Structurally identical exchange to Phase 2 from
-  // this side's code (RC still transmits and receives one Modified TS1 per round) - the
-  // reversal is about which side's transmitter is being adjusted, not a different wire
-  // protocol. On completion, equalization for this speed is genuinely done.
-  //-------------------------------------------------------
+  // Phase 3 (EC=11b): roles flip, EP now adjusts RC's Tx coefficients
   task automatic run_recovery_eq_phase3();
     modified_ts_bytes_t tx_content;
     modified_ts_bytes_t rx_content;

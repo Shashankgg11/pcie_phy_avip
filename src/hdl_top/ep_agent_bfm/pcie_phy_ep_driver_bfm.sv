@@ -59,17 +59,10 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
   //Real 8b/10b receivers track RX disparity independently from TX disparity.
   running_disparity_e rx_lane_disparity [0:PCIE_MAX_LANES-1];
 
-  //-------------------------------------------------------
-  // Variable: symbol_lock_acquired
-  // Real symbol/bit-boundary alignment - mirrors pcie_phy_rc_driver_bfm's identical fix.
-  //-------------------------------------------------------
+  // symbol alignment, once found, stays valid until reset() - same as RC's side
   bit symbol_lock_acquired;
 
-  //-------------------------------------------------------
-  // Variable: consec_invalid_rx_count
-  // Self-healing watchdog - mirrors pcie_phy_rc_driver_bfm's identical mechanism. See that
-  // file's version for the full design rationale.
-  //-------------------------------------------------------
+  // counts back-to-back bad decodes - forces a re-lock, same as RC's side
   int unsigned consec_invalid_rx_count;
   localparam int unsigned MAX_CONSEC_INVALID_RX = 3;
 
@@ -109,9 +102,7 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     ep_ready_idle             = 1'b0;
   endtask : default_values
 
-  // Function: encode_8b10b_symbol
-  // It takes byte value and running disparity from the pkg
-  // is_k_code selects the special-case K-code pairs vs the generic D-code tables
+  // Function: encode_8b10b_symbol - is_k_code picks K-code vs D-code lookup
   //-------------------------------------------------------
   function automatic bit [9:0] encode_8b10b_symbol(input bit [7:0] byte_val,
                                                      input bit is_k_code,
@@ -135,13 +126,9 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     end
   endfunction : encode_8b10b_symbol
 
-  // Function: decode_8b10b_symbol
-  // Inverse of encode_8b10b_symbol. Checks named K-codes first (both disparity
-  // variants), then falls back to a reverse lookup against the same D_POS_DISP/
-  // D_NEG_DISP tables the encoder uses. valid=0 signals a real 8b/10b coding
-  // violation - useful hook for error-injection / link-error checks later.
-  // NOTE: does not cross-check the incoming symbol's disparity against cur_rd for
-  // a running-disparity error - only confirms the symbol decodes to a legal byte.
+  // Function: decode_8b10b_symbol - inverse of the encoder. Checks K-codes
+  // first, then falls back to a reverse D-code lookup. valid=0 means it's not
+  // a legal 8b/10b symbol at all (doesn't check running-disparity errors)
   function automatic void decode_8b10b_symbol(input  bit [9:0] encoded_symbol,
                                                input  running_disparity_e cur_rd,
                                                output bit [7:0] byte_val,
@@ -190,12 +177,8 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     end
   endfunction : decode_8b10b_symbol
 
-  //-------------------------------------------------------
-  // Function: next_running_disparity
-  // Standard 8b/10b running-disparity update rule: count 1s in the just-sent 10-bit symbol;
-  // more 1s -> next symbol is RD_PLUS; more 0s -> RD_MINUS; exactly balanced (5 and 5) ->
-  // disparity carries over unchanged.
-  //-------------------------------------------------------
+  // standard 8b/10b disparity rule: more 1s -> RD_PLUS, more 0s -> RD_MINUS,
+  // balanced (5/5) -> carries over unchanged
   function automatic running_disparity_e next_running_disparity(input bit [9:0] encoded_symbol,
                                                                   input running_disparity_e cur_rd);
     int ones;
@@ -208,10 +191,7 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     else               next_running_disparity = cur_rd;
   endfunction : next_running_disparity
 
-  //-------------------------------------------------------
-  // Task: build_ts_bytes
-  //  16-symbol TS content. Serialization/encoding happens entirely
-  //-------------------------------------------------------
+  // builds the 16-symbol TS content - encoding happens in drive_ts below
   task automatic build_ts_bytes(input os_type_e   ts_id,
                                  input bit [7:0]   link_no,
                                  input bit [7:0]   lane_no,
@@ -258,12 +238,8 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     end
   endtask : build_ts_bytes
 
-  //-------------------------------------------------------
-  // Task: drive_ts
-  // Builds one TS (via build_ts_bytes, then for EACH of its 16 symbols: encodes
-  // that symbol per-lane (own disparity, own lane-number where applicable), and serializes the resulting 10-bit codes out bit-by-bit across all
-  // active lanes 
-  //-------------------------------------------------------
+  // builds one TS, encodes each of its 16 symbols per lane, and serializes
+  // the result bit-by-bit across all active lanes
   task automatic drive_ts(input os_type_e ts_id, input bit [7:0] link_no, input bit [7:0] lane_no,
                            input bit speed_change_req,
                            input bit autonomous_change,
@@ -325,20 +301,12 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     end
   endtask : drive_ts
 
+  // RX mirror of drive_ts - samples 160 edges (16 symbols x 10 bits), decodes
+  // each per lane. Lane Number is genuinely per-lane so it's returned via
+  // rx_lane_number[]; lane 0 is authoritative for everything else.
   //-------------------------------------------------------
-  // Task: receive_ts
-  // RX mirror of drive_ts: samples RX_P/RX_N for one TS's worth of clock edges
-  // (16 symbols x 10 bits = 160 edges), decodes each symbol-time per-lane with its
-  // own RX running disparity, and reconstructs the received TS. Symbol 2 (Lane
-  // Number) is genuinely per-lane, so it's returned separately via rx_lane_number[]
-  // rather than folded into the bytes struct's single sym2_lane_number field.
-  // Lane 0 is treated as authoritative for the lane-uniform symbols (0,1,3,4,5,6-15).
-  //-------------------------------------------------------
-  // Task: acquire_symbol_lock
-  // Real comma/symbol-boundary detection - mirrors pcie_phy_rc_driver_bfm's identical task.
-  // See that file's version for the full design rationale (bit-ordering derivation, why
-  // lane 0 alone is sufficient, why disparity is derived per-lane from which COM variant
-  // each lane's window shows).
+  // Task: acquire_symbol_lock - searches for a real COM to find symbol
+  // boundaries, same as RC's side
   //-------------------------------------------------------
   task automatic acquire_symbol_lock(output bit [9:0] locked_code [0:PCIE_MAX_LANES-1],
                                       output bit       found);
@@ -376,23 +344,19 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
                                   MAX_LOCK_SEARCH_EDGES))
   endtask : acquire_symbol_lock
 
-  //-------------------------------------------------------
-  // Task: wait_for_partner_ready
-  // Mirrors pcie_phy_rc_driver_bfm's identical task, using epCb. See that file's version
-  // for the full cross-side-transition barrier rationale.
-  //-------------------------------------------------------
-  task automatic wait_for_partner_ready(ref bit partner_flag, input int unsigned max_wait_edges,
+  // waits for the partner's ready flag without killing our own TX loop, so both
+  // sides stay on matching content until they're both ready to move on
+  task automatic wait_for_partner_ready(ref bit partner_flag, input time max_wait_time,
                                          output bit success);
-    int unsigned edges_waited;
-    edges_waited = 0;
+    time start_time;
+    start_time = $time;
     success = 1'b0;
-    while (edges_waited < max_wait_edges) begin
+    while (($time - start_time) < max_wait_time) begin
       if (partner_flag) begin
         success = 1'b1;
         return;
       end
       @(epCb);
-      edges_waited++;
     end
   endtask : wait_for_partner_ready
 
@@ -492,10 +456,7 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     end
   endtask : receive_ts
 
-  //-------------------------------------------------------
-  // Task: drive_idle
-  // Same encode-then-serialize path as drive_ts, but for the single repeated Idle (D0.0)
-  //-------------------------------------------------------
+  // same encode-then-serialize path as drive_ts, just for a repeated Idle symbol
   task automatic drive_idle();
     bit [9:0] encoded [0:PCIE_MAX_LANES-1];
 
@@ -524,10 +485,9 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     end
   endtask : drive_idle
 
-// Task: run_detect_quiet
-  // Detect has no Ordered-Set traffic, so this still relies on
-  // ELECTRICAL_IDLE_EXIT_ASSUMED (pcie_phy_pkg) rather than real RX decode - real
-  // Electrical Idle detection is an analog/voltage concept, out of this VIP's scope.
+// Task: run_detect_quiet - no Ordered Sets here, so this relies on
+  // ELECTRICAL_IDLE_EXIT_ASSUMED rather than real RX decode (Electrical Idle
+  // detection is an analog concept, out of scope for this VIP)
   //-------------------------------------------------------
   task run_detect_quiet(output detect_substate_e next_substate);
 
@@ -630,14 +590,10 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
 
   endfunction : perform_receiver_detection_all_lanes
 
-  // Task: run_linkwidth_start
-  //TX and RX run as CONCURRENT processes
-  // fork join_none models full duplex behavior
-  // Phase A - link_latched==0 TX sends Link=PAD/Lane=PAD while RX watches for RC's
-  //          proposed (non-PAD) Link Number to appear
-  // Phase B - link_latched==1 TX echoes the latched Link Number, Lane still PAD,
-  //          while RX watches for RC to reflect that SAME Link Number back with
-  //          Lane still PAD, 2 consecutive times - the real spec exit condition
+  // Task: run_linkwidth_start - TX and RX run concurrently (fork/join_none)
+  // Phase A: TX sends Link=PAD, RX watches for RC's proposed Link Number
+  // Phase B: once latched, TX echoes it back; exits once RC reflects it back
+  //          2 consecutive times
   
   task automatic run_linkwidth_start(output config_substate_e next_config_substate,
                                       output ltssm_state_e     next_state);
@@ -696,7 +652,7 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
           bit barrier_ok;
           `uvm_info(name, "Configuration.Linkwidth.Start local condition met - waiting for RC", UVM_HIGH)
           ep_ready_linkwidth_start = 1'b1;
-          wait_for_partner_ready(rc_ready_linkwidth_start, ep_agent_cfg_h.config_timeout_ts_count * TS_OS_LENGTH * 10, barrier_ok);
+          wait_for_partner_ready(rc_ready_linkwidth_start, time'(TIMEOUT_LINKWIDTH_MS * 1ms), barrier_ok);
           //NOT cleared here anymore - see race condition note where these flags are declared.
 
           if (!barrier_ok) begin
@@ -723,11 +679,8 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     end
   endtask : run_linkwidth_start
 
-  // Task: run_linkwidth_accept
-  // fork/join_none full duplex structure 
-  // TX echoes configured_lane_number[] every symbol time - that
-  // array is updated live by the RX loop below the instant new Lane Numbers arrive
-  // from RC, including automatic lane-reversal compensation.
+  // Task: run_linkwidth_accept - TX echoes configured_lane_number[] live,
+  // updated by the RX loop as new Lane Numbers arrive (handles lane reversal)
   task automatic run_linkwidth_accept(output config_substate_e next_config_substate,
                                        output ltssm_state_e     next_state);
     ts_ordered_set_bytes_t rx_bytes;
@@ -767,7 +720,7 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
           bit barrier_ok;
           `uvm_info(name, "Configuration.Linkwidth.Accept local condition met - waiting for RC", UVM_HIGH)
           ep_ready_linkwidth_accept = 1'b1;
-          wait_for_partner_ready(rc_ready_linkwidth_accept, ep_agent_cfg_h.config_timeout_ts_count * TS_OS_LENGTH * 10, barrier_ok);
+          wait_for_partner_ready(rc_ready_linkwidth_accept, time'(TIMEOUT_LINKWIDTH_MS * 1ms), barrier_ok);
           //NOT cleared here anymore - see race condition note where these flags are declared.
 
           if (!barrier_ok) begin
@@ -804,13 +757,8 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     return 1'b1;
   endfunction : detect_lane_reversal
 
-  //-------------------------------------------------------
-  // ADDED - Task: run_polling_active
-  // Spec 4.2.7.2.1. Ported from RC's Polling.Active, but rewritten in EP's own
-  // fork/join_none + output-argument convention (matching run_linkwidth_start/
-  // accept above) instead of RC's persistent-variable style, and made genuinely
-  // functional: ts1_tx_count/consec_rx_match_cnt are both driven by real receive_ts
-  // decode rather than referencing counters that are never incremented.
+  // Task: run_polling_active (spec 4.2.7.2.1) - same logic as RC's side, just
+  // using EP's output-argument convention instead of persistent variables
   //-------------------------------------------------------
   task automatic run_polling_active(output polling_substate_e next_polling_substate,
                                      output ltssm_state_e      next_state);
@@ -884,11 +832,8 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     end
   endtask : run_polling_active
 
-  //-------------------------------------------------------
-  // ADDED - Task: run_polling_configuration
-  // Spec 4.2.7.2.3. Same conventions as run_polling_active above. Added throttled UVM_LOW
-  // RX-content visibility matching run_polling_active - was previously invisible whether
-  // zero or some-but-insufficient TS2s were being received.
+  // Task: run_polling_configuration (spec 4.2.7.2.3) - same conventions as
+  // run_polling_active above
   //-------------------------------------------------------
   task automatic run_polling_configuration(output polling_substate_e next_polling_substate,
                                             output ltssm_state_e      next_state);
@@ -908,10 +853,8 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     rx_attempt_i            = 0;
     start_time              = $time;
 
-    //Fix: mirrors RC's identical fix - run_polling_active()'s TX thread was killed mid-symbol
-    //via disable fork, breaking the partner's already-established symbol_lock_acquired
-    //phase. Confirmed by direct evidence: every RX TS2 reception showed valid=0. Forcing a
-    //fresh comma-search here self-corrects it.
+    // same fix as RC - the previous state's TX thread could get killed mid-symbol,
+    // breaking alignment; forcing a fresh comma-search here self-corrects it
     symbol_lock_acquired = 1'b0;
 
     fork
@@ -947,7 +890,7 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
         bit barrier_ok;
         `uvm_info(name, "Polling.Configuration local condition met - waiting for RC", UVM_HIGH)
         ep_ready_polling_config = 1'b1;
-        wait_for_partner_ready(rc_ready_polling_config, ep_agent_cfg_h.config_timeout_ts_count * TS_OS_LENGTH * 10, barrier_ok);
+        wait_for_partner_ready(rc_ready_polling_config, time'(2 * POLLING_TIMEOUT_MS * 1ms), barrier_ok);
         //NOT cleared here anymore - see race condition note where these flags are declared.
 
         if (!barrier_ok) begin
@@ -1054,7 +997,7 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
           bit barrier_ok;
           `uvm_info(name, "Configuration.Lanenum.Wait local condition met - waiting for RC", UVM_HIGH)
           ep_ready_lanenum_wait = 1'b1;
-          wait_for_partner_ready(rc_ready_lanenum_wait, ep_agent_cfg_h.config_timeout_ts_count * TS_OS_LENGTH * 10, barrier_ok);
+          wait_for_partner_ready(rc_ready_lanenum_wait, time'(TIMEOUT_LANENUM_MS * 1ms), barrier_ok);
           //NOT cleared here anymore - see race condition note where these flags are declared.
 
           if (!barrier_ok) begin
@@ -1126,7 +1069,7 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
           bit barrier_ok;
           `uvm_info(name, "Configuration.Lanenum.Accept local condition met - waiting for RC", UVM_HIGH)
           ep_ready_lanenum_accept = 1'b1;
-          wait_for_partner_ready(rc_ready_lanenum_accept, ep_agent_cfg_h.config_timeout_ts_count * TS_OS_LENGTH * 10, barrier_ok);
+          wait_for_partner_ready(rc_ready_lanenum_accept, time'(TIMEOUT_LANENUM_MS * 1ms), barrier_ok);
           //NOT cleared here anymore - see race condition note where these flags are declared.
 
           if (!barrier_ok) begin
@@ -1215,7 +1158,7 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
           bit barrier_ok;
           `uvm_info(name, "Configuration.Complete local condition met - waiting for RC", UVM_HIGH)
           ep_ready_complete = 1'b1;
-          wait_for_partner_ready(rc_ready_complete, ep_agent_cfg_h.config_timeout_ts_count * TS_OS_LENGTH * 10, barrier_ok);
+          wait_for_partner_ready(rc_ready_complete, time'(TIMEOUT_COMPLETE_MS * 1ms), barrier_ok);
           //NOT cleared here anymore - see race condition note where these flags are declared.
 
           if (!barrier_ok) begin
@@ -1277,7 +1220,7 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
         bit barrier_ok;
         `uvm_info(name, "Configuration.Idle local condition met - waiting for RC", UVM_HIGH)
         ep_ready_idle = 1'b1;
-        wait_for_partner_ready(rc_ready_idle, ep_agent_cfg_h.config_timeout_ts_count * TS_OS_LENGTH * 10, barrier_ok);
+        wait_for_partner_ready(rc_ready_idle, time'(TIMEOUT_IDLE_MS * 1ms), barrier_ok);
         //NOT cleared here anymore - see race condition note where these flags are declared.
 
         if (!barrier_ok) begin
@@ -1302,11 +1245,7 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     end
   endtask : run_configuration_idle
 
-  //-------------------------------------------------------
-  // Task: sample_one_symbol
-  // Lightweight RX helper for run_l0()'s error/idle tracking - lane 0 only. Mirrors
-  // pcie_phy_rc_driver_bfm's identical task.
-  //-------------------------------------------------------
+  // lightweight RX helper for run_l0()'s error/idle tracking - lane 0 only
   task automatic sample_one_symbol(output bit [7:0] byte_val, output bit is_k, output bit valid);
     bit [9:0] code;
     for (int b = 0; b < 10; b++) begin
@@ -1317,13 +1256,8 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     rx_lane_disparity[0] = next_running_disparity(code, rx_lane_disparity[0]);
   endtask : sample_one_symbol
 
-  //-------------------------------------------------------
-  // Task: run_l0
-  // Mirrors pcie_phy_rc_driver_bfm's run_l0() exactly - same 4 exit conditions, same
-  // simplified scope (TX-side data helpers and the partner-initiated TS1 qualification
-  // tracker are not present, matching RC's current state). Uses EP's own output-argument
-  // convention instead of RC's global-variable style, matching every other EP task.
-  //-------------------------------------------------------
+  // same 4 exit conditions as RC's run_l0(), same simplified scope, just using
+  // EP's output-argument convention
   task automatic run_l0(output ltssm_state_e next_state, output recovery_reason_e next_recovery_reason_out);
     int unsigned consec_rx_errors;
     realtime     last_legit_rx_time;

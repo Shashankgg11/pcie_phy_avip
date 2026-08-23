@@ -51,22 +51,15 @@ package pcie_phy_pkg;
   parameter int MIN_IDLE_RX         = 8;    //Min consecutive Idle symbols rx, to exit Config.Idle
   parameter int IDLE_COUNT          = 8;    //Generic idle-symbol threshold alias
  
-  //-------------------------------------------------------
-  // Logical symbol identifier values (symbol IDENTITY used for ordered-set/packet
-  // formation and comparison; bit-level line encoding is Electrical Sub-block scope
-  // and is not modeled here)
-  //-------------------------------------------------------
+  // logical symbol IDs used for ordered-set/packet content - bit-level line
+  // encoding (Electrical Sub-block) isn't modeled here
   parameter bit [7:0] COM_SYMBOL   = 8'hBC; //Comma - OS start, resets scrambler LFSR
   parameter bit [7:0] PAD_SYMBOL   = 8'hF7; //Pad - unassigned Link#/Lane#
   parameter bit [7:0] TS1_ID_BYTE  = 8'h4A; //TS1 identifier symbol (D10.2)
   parameter bit [7:0] TS2_ID_BYTE  = 8'h45; //TS2 identifier symbol (D5.2)
 
-  //-------------------------------------------------------
-  // Modified TS1/TS2 (128b/130b, Gen3+) - identifier bytes and EC (Equalization Control)
-  // field values. use_modified_ts becomes true once current_speed >= EQ_REQUIRED_MIN_GEN and
-  // stays true from then on - it does not revert on a later speed step, since a link already
-  // operating at Gen3+ never goes back to the standard 8b/10b TS format.
-  //-------------------------------------------------------
+  // Modified TS1/TS2 (Gen3+) ID bytes and EC field values. use_modified_ts
+  // latches true once current_speed hits Gen3+ and stays true - no reverting
   parameter bit [7:0] MOD_TS1_ID = 8'h1E;
   parameter bit [7:0] MOD_TS2_ID = 8'h2D;
 
@@ -104,11 +97,8 @@ package pcie_phy_pkg;
   parameter int FLIT_CRC_BYTES         = 8;
   parameter int FLIT_FEC_BYTES         = 6;
 
-  //Struct: flit_t
-  //Referenced in comments alongside FLIT_MODE previously but never actually defined. Simple
-  //flat layout: TLP payload + DLP (sequence number/ack fields, not broken out further here)
-  //+ CRC + FEC, matching FLIT_TLP_PAYLOAD_BYTES/FLIT_DLP_BYTES/FLIT_CRC_BYTES/FLIT_FEC_BYTES
-  //above (236+6+8+6 = 256 = FLIT_BYTES).
+  // Struct: flit_t - flat layout: TLP payload + DLP + CRC + FEC
+  // (236+6+8+6 = 256 bytes = FLIT_BYTES)
   typedef struct packed {
     logic [(FLIT_TLP_PAYLOAD_BYTES*8)-1:0] tlp_payload;
     logic [(FLIT_DLP_BYTES*8)-1:0]         dlp;
@@ -117,10 +107,7 @@ package pcie_phy_pkg;
   } flit_t;
 
  
-  //-------------------------------------------------------
-  // Gen6 reference profile constants (x4 link, Gen6 capability advertised while
-  // training at 2.5 GT/s). Example profile - override per test.
-  //-------------------------------------------------------
+  // Gen6 reference profile (x4 link) - override per test as needed
   parameter bit [7:0] SYM4_GEN6 = 8'h3F; //Data Rate Id: FLIT+2.5/5/8/16/32 GT/s advertised
   parameter bit [7:0] SYM5_GEN6 = 8'h60; //Training Control: ELBC=11b, scrambling ON
   parameter bit [7:0] NTFS_RC   = 8'h84; //RC's N_FTS (Symbol 3)
@@ -200,13 +187,8 @@ package pcie_phy_pkg;
     L2_ST        = 4'hA
   } ltssm_state_e;
  
-  //-------------------------------------------------------
-  // Per-state sub-state enums.
-  // One enum per row of ltssm_state_e that actually HAS sub-states. DISABLED_ST,
-  // HOT_RESET_ST and L0_ST are intentionally absent here - they are single,
-  // un-broken-down states; there is nothing to enumerate under them.
-  // All are sized to 3 bits so they share one packed union below (ltssm_substate_u).
-  //-------------------------------------------------------
+  // one enum per LTSSM state that has sub-states (DISABLED/HOT_RESET/L0 don't,
+  // so they're skipped). All 3 bits wide to share the packed union below.
  
   //Enum: detect_substate_e - sub-states of ltssm_state_e::DETECT_ST
   typedef enum logic [2:0] {
@@ -231,12 +213,9 @@ package pcie_phy_pkg;
     CFG_IDLE
   } config_substate_e;
  
-  //Enum: recovery_substate_e - sub-states of ltssm_state_e::RECOVERY_ST
-  //RECOVERY_RCVR_LOCK/RECOVERY_SPEED/RECOVERY_RCVR_CFG/RECOVERY_IDLE are re-entered once per
-  //step of SPEED_UPGRADE_SEQUENCE when stepping up to GEN6. The single RECOVERY_EQUALIZATION
-  //placeholder is replaced with the 4 real phases (EC=01b/01b/10b/11b per spec) - EC=01b
-  //covers both Phase 0 and Phase 1, distinguished behaviourally, not by wire value; see
-  //run_recovery_eq_phase0()/phase1()'s own headers.
+  // Enum: recovery_substate_e - sub-states of RECOVERY_ST. RcvrLock/Speed/RcvrCfg/Idle
+  // repeat once per speed step up to Gen6. Equalization has 4 real phases (EC=01/01/10/11 -
+  // Phase 0 and 1 share the same wire value, split by behavior).
   typedef enum logic [2:0] {
     RECOVERY_RCVR_LOCK,
     RECOVERY_RCVR_CFG,
@@ -320,11 +299,8 @@ package pcie_phy_pkg;
     PIPE_RATE_GEN6 = 4'h5
   } pipe_rate_e;
 
-  //Enum: bfm_verify_task_e
-  //Test/debug-only - selects exactly which driver_bfm task a verification sequence wants
-  //exercised next. Has no protocol meaning; it exists purely so every task implemented in
-  //rc_driver_bfm/ep_driver_bfm can be called at least once from a directed sequence, in
-  //whatever order, without needing real LTSSM stimulus to reach that state naturally.
+  // Enum: bfm_verify_task_e - debug-only selector so a directed sequence can call
+  // any driver_bfm task directly, without needing real LTSSM stimulus
   typedef enum {
     VERIFY_SEND_TS1,                    //drive_ts(OS_TS1, ...)          - rc + ep
     VERIFY_SEND_TS2,                    //drive_ts(OS_TS2, ...)          - rc + ep
@@ -390,10 +366,7 @@ package pcie_phy_pkg;
     SKP_ORDERED_SET     //Periodic Flit-mode SKP Ordered Set (clock compensation)
   } flit_content_e;
  
-  //=========================================================================================
-  // STRUCTS  (all `packed` so every type here can be driven/sampled directly on an
-  //           interface or cast to/from a bit-vector)
-  //=========================================================================================
+  // ---- structs (all packed, so they cast directly to/from a bit-vector) ----
  
   //Struct: ts_ordered_set_t
   //Decoded TS1/TS2 Ordered-Set fields used for Link Initialization/Training and
@@ -430,12 +403,8 @@ package pcie_phy_pkg;
     logic [9:0][7:0] sym6_15_identifier; //packed 10x8b: TS1_ID_BYTE x10 or TS2_ID_BYTE x10
   } ts_ordered_set_bytes_t;
  
-  //Struct: modified_ts_bytes_t
-  //Modified TS1/TS2 (128b/130b, Gen3+) logical content - only the 7 real content bytes
-  //(0-6). Byte 7 (parity), bytes 8-14 (replica of 0-6), and byte 15 (parity of the replica)
-  //are all DERIVED from these 7 at drive time and independently reconstructed/checked at
-  //receive time - not stored here, same separation of concerns as ts_ordered_set_bytes_t
-  //versus its own serialization in drive_ts()/receive_ts().
+  // Struct: modified_ts_bytes_t - just the 7 real content bytes. Parity and the
+  // replica bytes are derived at drive time and checked at receive time, not stored here.
   typedef struct packed {
     logic [7:0] id;           //byte0: MOD_TS1_ID or MOD_TS2_ID
     logic [7:0] link_number;  //byte1
@@ -528,11 +497,8 @@ package pcie_phy_pkg;
   parameter bit [9:0] K_IDL_P = 10'b1100001100; //K28.3, standard table
   parameter bit [9:0] K_IDL_N = 10'b0011110011;
  
-  //-------------------------------------------------------
-  // Generic D-code (data character) tables, indexed by the 8-bit byte value (0-255).
-  // D_NEG_DISP[byte] = 10b encoding to use when current disparity is RD_MINUS.
-  // D_POS_DISP[byte] = 10b encoding to use when current disparity is RD_PLUS.
-  //-------------------------------------------------------
+  // D-code lookup tables, indexed by byte value (0-255)
+  // D_NEG_DISP/D_POS_DISP = 10b encoding to use for RD_MINUS / RD_PLUS
   parameter bit [9:0] D_NEG_DISP [0:255] = '{
     10'b1001110100, 10'b0111010100, 10'b1011010100, 10'b1100011011, 10'b1101010100, 10'b1010011011, 10'b0110011011, 10'b1110001011,
     10'b1110010100, 10'b1001011011, 10'b0101011011, 10'b1101001011, 10'b0011011011, 10'b1011001011, 10'b0111001011, 10'b0101110100,
@@ -603,13 +569,9 @@ package pcie_phy_pkg;
     10'b0011001110, 10'b1001100001, 10'b0101100001, 10'b0010011110, 10'b0011100001, 10'b0100011110, 10'b1000011110, 10'b0101001110
   };
  
-  //-------------------------------------------------------
-  // Enum: pcie_phy_ltssm_task_e
-  // REAL protocol dispatch selector - distinct from bfm_verify_task_e (which is debug-only
-  // and has no protocol meaning). One value = exactly one callable task in
-  // rc_driver_bfm/ep_driver_bfm. A per-state sequence sets exactly one of these; the
-  // driver_proxy's job is only to call the matching task and copy its real output arguments
-  // back onto the item - it never decides what runs next.
+  // Enum: pcie_phy_ltssm_task_e - the real dispatch selector (unlike
+  // bfm_verify_task_e above). One value maps to one driver_bfm task; the
+  // driver_proxy just calls it and copies the results back.
   //-------------------------------------------------------
   typedef enum {
     LTSSM_TASK_DETECT_QUIET,
@@ -626,65 +588,30 @@ package pcie_phy_pkg;
     LTSSM_TASK_L0
   } pcie_phy_ltssm_task_e;
 
-  //-------------------------------------------------------
-  // Variable: exit_compliance_req
-  // Package-scope, mirroring the reference PCIe_MONITOR model's cur_speed pattern. NOT set by
-  // the monitor - a test/sequence-level control knob: set to 1 externally to request leaving
-  // Polling.Compliance (which otherwise has no logical exit condition of its own per spec).
-  // run_polling_compliance() checks it every loop iteration and clears it back to 0 once
-  // consumed.
-  //-------------------------------------------------------
+  // test-level knob: set to 1 to request leaving Polling.Compliance, which has
+  // no exit condition of its own. run_polling_compliance() clears it once consumed.
   bit exit_compliance_req;
 
-  //-------------------------------------------------------
-  // Variable: recovery_request
-  // Same pattern as exit_compliance_req. A test/sequence sets this to 1 externally to force
-  // L0 -> Recovery (directed retrain). run_l0() checks it every loop iteration and clears it
-  // back to 0 once consumed.
-  //-------------------------------------------------------
+  // same pattern as exit_compliance_req - set to 1 to force L0 -> Recovery
+  // (directed retrain). run_l0() clears it once consumed.
   bit recovery_request;
 
+  // Cross-side barrier flags (one pair per Configuration substate + Polling.Config)
+  //
+  // Fixes a real race: each side used to tear down its own TX the instant its own
+  // exit condition was met, even if the partner was still receiving against the
+  // old content. Now each side sets its own flag, then waits for the partner's
+  // flag before tearing down - keeping both sides on matching content the whole time.
+  //
+  // Named per-substate rather than one shared counter, since retry loops (like
+  // Lanenum.Accept looping back to Wait) mean the two sides don't always take the
+  // same number of steps.
+  //
+  // Flags are set but never cleared after use - clearing them right after the wait
+  // unblocks had a real race where the other side could miss seeing the flag in
+  // time. Since these states aren't re-entered within one training run, leaving
+  // flags set is safe and removes the race.
   //-------------------------------------------------------
-  // Cross-side transition barrier flags (Configuration substates)
-  //
-  // Root cause this fixes: each side's task previously tore down its own TX thread
-  // (disable fork) the instant ITS OWN local exit condition was met, with no regard for
-  // whether the partner had finished receiving against the OLD content yet. Since the two
-  // sides' exit conditions are not equally hard to satisfy (e.g. EP's Linkwidth.Start check
-  // is structurally easier than RC's), one side would routinely finish and move to
-  // completely different content while the other was still deep in its own receive loop -
-  // corrupting that side's symbol lock with no way to recover, since the content it was
-  // chasing had genuinely stopped being sent.
-  //
-  // Fix: each side sets its OWN flag once its local condition is met, then blocks on the
-  // PARTNER's flag before disabling its TX fork - keeping the SAME content flowing the
-  // whole time it waits. This bounds the handoff skew to roughly one TS-reception-cycle
-  // instead of an unbounded amount, and both sides remain on compatible content throughout.
-  //
-  // Named per-substate (not a single generic counter) because retry loops - e.g.
-  // Lanenum.Accept looping back to Lanenum.Wait on a smaller-link renegotiation - mean the
-  // two sides do not always take the same number of steps, so a shared monotonic counter
-  // would not stay meaningfully aligned across a retry.
-  //
-  // IMPORTANT - flags are set but deliberately NEVER cleared after use (originally they
-  // were cleared immediately after the wait unblocked - that had a genuine race: if side A
-  // reaches its condition first, sets its flag, and starts waiting, side B may reach its own
-  // condition, see A's flag, succeed, and clear ITS OWN flag again almost instantly - all
-  // within a single clock edge on B's side. If A's own poll (running on A's independent
-  // clock edges) hadn't yet checked during that exact window, A could miss ever seeing B's
-  // flag true at all, and time out despite B having genuinely succeeded. Confirmed directly:
-  // RC completed successfully while EP's identical wait for RC's flag timed out, in the same
-  // run, on the same barrier. Since none of these states are re-entered within a single
-  // successful training run (only a full default_values() reset would revisit them), leaving
-  // the flags set once used is safe and removes the race entirely - whichever side sets its
-  // flag first, it simply stays visible for the other to find, no matter how much later.
-  //-------------------------------------------------------
-  //Polling.Configuration also needs this barrier - it's the same class of race as the
-  //Configuration substates below, just one boundary earlier. Confirmed by direct evidence:
-  //EP finished and moved to Configuration.Linkwidth while RC was still deep in its own
-  //Polling.Configuration receive loop, and RC never recovered for the rest of its timeout
-  //window - the self-healing watchdog alone wasn't enough here because the content EP was
-  //now sending genuinely didn't match what RC's still-active task was looking for.
   bit rc_ready_polling_config;
   bit ep_ready_polling_config;
 
@@ -701,10 +628,8 @@ package pcie_phy_pkg;
   bit rc_ready_idle;
   bit ep_ready_idle;
 
-  //Enum: recovery_reason_e
-  //Published by run_l0() alongside next_state=RECOVERY_ST so the caller (and any log/coverage
-  //consumer) knows WHY Recovery was entered - real PCIe hardware distinguishes these too, not
-  //just "we're in Recovery."
+  // Enum: recovery_reason_e - published alongside next_state=RECOVERY_ST so
+  // callers know WHY Recovery was entered
   typedef enum {
     RECOVERY_REASON_NONE,
     RECOVERY_REASON_SPEED_CHANGE,     //current_speed != target_link_speed
