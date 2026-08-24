@@ -1,5 +1,5 @@
 # vsim pcie_phy_opt "+UVM_TESTNAME=pcie_phy_link_training_test" -c -do "run -all; quit -f" 
-# Start time: 21:56:53 on Aug 23,2026
+# Start time: 22:08:46 on Aug 24,2026
 # //  Questa Sim
 # //  Version 10.6c linux Jul 25 2017
 # //
@@ -124,45 +124,45 @@
 # UVM_INFO ../../src/hvl_top/test/sequences/ep_sequences//pcie_phy_ep_detect_seq.sv(27) @ 0: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_ltssm_seqr_h@@ep_detect [pcie_phy_ep_detect_seq] Starting pcie_phy_ep_detect_seq
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(88) @ 30000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=DETECT_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(150) @ 30000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Real dispatch: task_id=LTSSM_TASK_DETECT_QUIET
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(534) @ 30000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Detect.Quiet
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(529) @ 30000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Detect.Quiet
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(64) @ 30000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=RECOVERY_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(94) @ 30000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Real dispatch: task_id=LTSSM_TASK_DETECT_QUIET
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(730) @ 30000: reporter [PCIE_PHY_RC_DRIVER_BFM] Entering Detect.Quiet
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(755) @ 30000: reporter [PCIE_PHY_RC_DRIVER_BFM] Entering Detect.Quiet
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(64) @ 30000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=DETECT_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(94) @ 30000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Real dispatch: task_id=LTSSM_TASK_DETECT_ACTIVE
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(758) @ 30000: reporter [PCIE_PHY_RC_DRIVER_BFM] Entering Detect.Active
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(783) @ 30000: reporter [PCIE_PHY_RC_DRIVER_BFM] Entering Detect.Active
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(88) @ 30000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=L0_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(150) @ 30000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Real dispatch: task_id=LTSSM_TASK_DETECT_ACTIVE
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(566) @ 30000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Detect.Active
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(561) @ 30000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Detect.Active
 # UVM_INFO ../../src/hvl_top/test/sequences/rc_sequences//pcie_phy_rc_polling_active_seq.sv(30) @ 30000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_ltssm_seqr_h@@rc_poll_active [pcie_phy_rc_polling_active_seq] Starting pcie_phy_rc_polling_active_seq
 # UVM_INFO ../../src/hvl_top/test/sequences/ep_sequences//pcie_phy_ep_polling_active_seq.sv(25) @ 30000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_ltssm_seqr_h@@ep_poll_active [pcie_phy_ep_polling_active_seq] Starting pcie_phy_ep_polling_active_seq
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(88) @ 30000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=RECOVERY_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(150) @ 30000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Real dispatch: task_id=LTSSM_TASK_POLLING_ACTIVE
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(824) @ 30000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Polling.Active
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(807) @ 30000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Polling.Active
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(64) @ 30000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=L0s_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(94) @ 30000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Real dispatch: task_id=LTSSM_TASK_POLLING_ACTIVE
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1276) @ 30000: reporter [PCIE_PHY_RC_DRIVER_BFM] Entering Polling.Active
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(370) @ 250000: reporter [PCIE_PHY_EP_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(417) @ 250000: reporter [PCIE_PHY_RC_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(851) @ 3250000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX TS1 #1: valid=1 link=0xf7 lane=0xf7 n_fts=0x84 data_rate=0x83 train_ctrl=0x60 id=0x4a
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1310) @ 3250000: reporter [PCIE_PHY_RC_DRIVER_BFM] RX TS1 #1: valid=1 link=0xf7 lane=0xf7 n_fts=0xc8 data_rate=0x3 train_ctrl=0x60 id=0x4a
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(851) @ 409650000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX TS1 #128: valid=1 link=0xf7 lane=0xf7 n_fts=0x84 data_rate=0x83 train_ctrl=0x60 id=0x4a
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1310) @ 409650000: reporter [PCIE_PHY_RC_DRIVER_BFM] RX TS1 #128: valid=1 link=0xf7 lane=0xf7 n_fts=0xc8 data_rate=0x3 train_ctrl=0x60 id=0x4a
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(851) @ 819250000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX TS1 #256: valid=1 link=0xf7 lane=0xf7 n_fts=0x84 data_rate=0x83 train_ctrl=0x60 id=0x4a
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1310) @ 819250000: reporter [PCIE_PHY_RC_DRIVER_BFM] RX TS1 #256: valid=1 link=0xf7 lane=0xf7 n_fts=0xc8 data_rate=0x3 train_ctrl=0x60 id=0x4a
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(851) @ 1228850000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX TS1 #384: valid=1 link=0xf7 lane=0xf7 n_fts=0x84 data_rate=0x83 train_ctrl=0x60 id=0x4a
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1310) @ 1228850000: reporter [PCIE_PHY_RC_DRIVER_BFM] RX TS1 #384: valid=1 link=0xf7 lane=0xf7 n_fts=0xc8 data_rate=0x3 train_ctrl=0x60 id=0x4a
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(851) @ 1638450000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX TS1 #512: valid=1 link=0xf7 lane=0xf7 n_fts=0x84 data_rate=0x83 train_ctrl=0x60 id=0x4a
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1310) @ 1638450000: reporter [PCIE_PHY_RC_DRIVER_BFM] RX TS1 #512: valid=1 link=0xf7 lane=0xf7 n_fts=0xc8 data_rate=0x3 train_ctrl=0x60 id=0x4a
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(851) @ 2048050000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX TS1 #640: valid=1 link=0xf7 lane=0xf7 n_fts=0x84 data_rate=0x83 train_ctrl=0x60 id=0x4a
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1310) @ 2048050000: reporter [PCIE_PHY_RC_DRIVER_BFM] RX TS1 #640: valid=1 link=0xf7 lane=0xf7 n_fts=0xc8 data_rate=0x3 train_ctrl=0x60 id=0x4a
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(851) @ 2457650000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX TS1 #768: valid=1 link=0xf7 lane=0xf7 n_fts=0x84 data_rate=0x83 train_ctrl=0x60 id=0x4a
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1310) @ 2457650000: reporter [PCIE_PHY_RC_DRIVER_BFM] RX TS1 #768: valid=1 link=0xf7 lane=0xf7 n_fts=0xc8 data_rate=0x3 train_ctrl=0x60 id=0x4a
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(851) @ 2867250000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX TS1 #896: valid=1 link=0xf7 lane=0xf7 n_fts=0x84 data_rate=0x83 train_ctrl=0x60 id=0x4a
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1310) @ 2867250000: reporter [PCIE_PHY_RC_DRIVER_BFM] RX TS1 #896: valid=1 link=0xf7 lane=0xf7 n_fts=0xc8 data_rate=0x3 train_ctrl=0x60 id=0x4a
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(851) @ 3276850000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX TS1 #1024: valid=1 link=0xf7 lane=0xf7 n_fts=0x84 data_rate=0x83 train_ctrl=0x60 id=0x4a
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1310) @ 3276850000: reporter [PCIE_PHY_RC_DRIVER_BFM] RX TS1 #1024: valid=1 link=0xf7 lane=0xf7 n_fts=0xc8 data_rate=0x3 train_ctrl=0x60 id=0x4a
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1331) @ 3276850000: reporter [PCIE_PHY_RC_DRIVER_BFM] Polling.Active completed successfully
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1302) @ 30000: reporter [PCIE_PHY_RC_DRIVER_BFM] Entering Polling.Active
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(338) @ 250000: reporter [PCIE_PHY_EP_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(386) @ 250000: reporter [PCIE_PHY_RC_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(834) @ 3250000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX TS1 #1: valid=1 link=0xf7 lane=0xf7 n_fts=0x84 data_rate=0x83 train_ctrl=0x60 id=0x4a
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1336) @ 3250000: reporter [PCIE_PHY_RC_DRIVER_BFM] RX TS1 #1: valid=1 link=0xf7 lane=0xf7 n_fts=0xc8 data_rate=0x3 train_ctrl=0x60 id=0x4a
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(834) @ 409650000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX TS1 #128: valid=1 link=0xf7 lane=0xf7 n_fts=0x84 data_rate=0x83 train_ctrl=0x60 id=0x4a
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1336) @ 409650000: reporter [PCIE_PHY_RC_DRIVER_BFM] RX TS1 #128: valid=1 link=0xf7 lane=0xf7 n_fts=0xc8 data_rate=0x3 train_ctrl=0x60 id=0x4a
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(834) @ 819250000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX TS1 #256: valid=1 link=0xf7 lane=0xf7 n_fts=0x84 data_rate=0x83 train_ctrl=0x60 id=0x4a
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1336) @ 819250000: reporter [PCIE_PHY_RC_DRIVER_BFM] RX TS1 #256: valid=1 link=0xf7 lane=0xf7 n_fts=0xc8 data_rate=0x3 train_ctrl=0x60 id=0x4a
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(834) @ 1228850000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX TS1 #384: valid=1 link=0xf7 lane=0xf7 n_fts=0x84 data_rate=0x83 train_ctrl=0x60 id=0x4a
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1336) @ 1228850000: reporter [PCIE_PHY_RC_DRIVER_BFM] RX TS1 #384: valid=1 link=0xf7 lane=0xf7 n_fts=0xc8 data_rate=0x3 train_ctrl=0x60 id=0x4a
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(834) @ 1638450000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX TS1 #512: valid=1 link=0xf7 lane=0xf7 n_fts=0x84 data_rate=0x83 train_ctrl=0x60 id=0x4a
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1336) @ 1638450000: reporter [PCIE_PHY_RC_DRIVER_BFM] RX TS1 #512: valid=1 link=0xf7 lane=0xf7 n_fts=0xc8 data_rate=0x3 train_ctrl=0x60 id=0x4a
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(834) @ 2048050000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX TS1 #640: valid=1 link=0xf7 lane=0xf7 n_fts=0x84 data_rate=0x83 train_ctrl=0x60 id=0x4a
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1336) @ 2048050000: reporter [PCIE_PHY_RC_DRIVER_BFM] RX TS1 #640: valid=1 link=0xf7 lane=0xf7 n_fts=0xc8 data_rate=0x3 train_ctrl=0x60 id=0x4a
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(834) @ 2457650000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX TS1 #768: valid=1 link=0xf7 lane=0xf7 n_fts=0x84 data_rate=0x83 train_ctrl=0x60 id=0x4a
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1336) @ 2457650000: reporter [PCIE_PHY_RC_DRIVER_BFM] RX TS1 #768: valid=1 link=0xf7 lane=0xf7 n_fts=0xc8 data_rate=0x3 train_ctrl=0x60 id=0x4a
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(834) @ 2867250000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX TS1 #896: valid=1 link=0xf7 lane=0xf7 n_fts=0x84 data_rate=0x83 train_ctrl=0x60 id=0x4a
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1336) @ 2867250000: reporter [PCIE_PHY_RC_DRIVER_BFM] RX TS1 #896: valid=1 link=0xf7 lane=0xf7 n_fts=0xc8 data_rate=0x3 train_ctrl=0x60 id=0x4a
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(834) @ 3276850000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX TS1 #1024: valid=1 link=0xf7 lane=0xf7 n_fts=0x84 data_rate=0x83 train_ctrl=0x60 id=0x4a
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1336) @ 3276850000: reporter [PCIE_PHY_RC_DRIVER_BFM] RX TS1 #1024: valid=1 link=0xf7 lane=0xf7 n_fts=0xc8 data_rate=0x3 train_ctrl=0x60 id=0x4a
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1357) @ 3276850000: reporter [PCIE_PHY_RC_DRIVER_BFM] Polling.Active completed successfully
 # UVM_INFO ../../src/hvl_top/test/sequences/ep_sequences//pcie_phy_ep_polling_active_seq.sv(41) @ 3276850000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_ltssm_seqr_h@@ep_poll_active [pcie_phy_ep_polling_active_seq] Polling.Active -> POLLING_CONFIG
 # UVM_INFO ../../src/hvl_top/test/sequences/rc_sequences//pcie_phy_rc_polling_active_seq.sv(46) @ 3276850000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_ltssm_seqr_h@@rc_poll_active [pcie_phy_rc_polling_active_seq] Polling.Active -> POLLING_CONFIG
 # UVM_INFO ../../src/hvl_top/test/virtual_sequences//pcie_phy_virtual_link_training_seq.sv(60) @ 3276850000: uvm_test_top.pcie_phy_env_h.pcie_phy_virtual_seqr_h@@vseq_h [pcie_phy_virtual_link_training_seq] Reached Polling.POLLING_CONFIG on RC, Polling.POLLING_CONFIG on EP
@@ -170,102 +170,116 @@
 # UVM_INFO ../../src/hvl_top/test/sequences/ep_sequences//pcie_phy_ep_polling_configuration_seq.sv(24) @ 3276850000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_ltssm_seqr_h@@ep_poll_cfg [pcie_phy_ep_polling_configuration_seq] Starting pcie_phy_ep_polling_configuration_seq
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(64) @ 3276850000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=LOOPBACK_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(94) @ 3276850000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Real dispatch: task_id=LTSSM_TASK_POLLING_CONFIGURATION
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1410) @ 3276850000: reporter [PCIE_PHY_RC_DRIVER_BFM] Entering Polling.Configuration
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1430) @ 3276850000: reporter [PCIE_PHY_RC_DRIVER_BFM] Entering Polling.Configuration
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(88) @ 3276850000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=L0_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(150) @ 3276850000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Real dispatch: task_id=LTSSM_TASK_POLLING_CONFIGURATION
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(903) @ 3276850000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Polling.Configuration
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(370) @ 3277070000: reporter [PCIE_PHY_EP_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1443) @ 3280050000: reporter [PCIE_PHY_RC_DRIVER_BFM] RX TS2 #1: valid=0 link=0x6b lane=0x6b id=0x2 ts2_tx_count_complete=0
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(932) @ 3280070000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX TS2 #1: valid=1 link=0xf7 lane=0xf7 id=0x45 ts2_tx_count_complete=0
-# UVM_WARNING ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(537) @ 3286450000: reporter [PCIE_PHY_RC_DRIVER_BFM] 3 consecutive invalid receptions - forcing symbol re-lock
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(417) @ 3286670000: reporter [PCIE_PHY_RC_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1477) @ 3340870000: reporter [PCIE_PHY_RC_DRIVER_BFM] Polling.Configuration completed successfully
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(883) @ 3276850000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Polling.Configuration
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(338) @ 3277070000: reporter [PCIE_PHY_EP_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1463) @ 3280050000: reporter [PCIE_PHY_RC_DRIVER_BFM] RX TS2 #1: valid=0 link=0x6b lane=0x6b id=0x2 ts2_tx_count_complete=0
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(910) @ 3280070000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX TS2 #1: valid=1 link=0xf7 lane=0xf7 id=0x45 ts2_tx_count_complete=0
+# UVM_WARNING ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(535) @ 3286450000: reporter [PCIE_PHY_RC_DRIVER_BFM] 3 consecutive invalid receptions - forcing symbol re-lock
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(386) @ 3286670000: reporter [PCIE_PHY_RC_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1497) @ 3340870000: reporter [PCIE_PHY_RC_DRIVER_BFM] Polling.Configuration completed successfully
 # UVM_INFO ../../src/hvl_top/test/sequences/rc_sequences//pcie_phy_rc_polling_configuration_seq.sv(41) @ 3340870000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_ltssm_seqr_h@@rc_poll_cfg [pcie_phy_rc_polling_configuration_seq] Polling.Configuration complete -> CONFIG_ST
 # UVM_INFO ../../src/hvl_top/test/sequences/ep_sequences//pcie_phy_ep_polling_configuration_seq.sv(39) @ 3340890000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_ltssm_seqr_h@@ep_poll_cfg [pcie_phy_ep_polling_configuration_seq] Polling.Configuration complete -> CONFIG_ST
 # UVM_INFO ../../src/hvl_top/test/sequences/rc_sequences//pcie_phy_rc_config_linkwidth_seq.sv(30) @ 3340890000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_ltssm_seqr_h@@rc_cfg_lw [pcie_phy_rc_config_linkwidth_seq] Starting pcie_phy_rc_config_linkwidth_seq
 # UVM_INFO ../../src/hvl_top/test/sequences/ep_sequences//pcie_phy_ep_config_linkwidth_seq.sv(28) @ 3340890000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_ltssm_seqr_h@@ep_cfg_lw [pcie_phy_ep_config_linkwidth_seq] Starting pcie_phy_ep_config_linkwidth_seq
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(64) @ 3340890000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=L0_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(94) @ 3340890000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Real dispatch: task_id=LTSSM_TASK_CFG_LINKWIDTH_START
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(810) @ 3340890000: reporter [PCIE_PHY_RC_DRIVER_BFM] Entering Configuration.Linkwidth.Start
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(835) @ 3340890000: reporter [PCIE_PHY_RC_DRIVER_BFM] Entering Configuration.Linkwidth.Start
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(88) @ 3340890000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=L0_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(150) @ 3340890000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Real dispatch: task_id=LTSSM_TASK_CFG_LINKWIDTH_START
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(651) @ 3340890000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Configuration.Linkwidth.Start
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(370) @ 3341110000: reporter [PCIE_PHY_EP_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(674) @ 3344110000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX (Linkwidth.Start) #1: valid=1 link=0x0 lane=0xf7 id=0x4a link_latched=0
-# UVM_WARNING ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(537) @ 3350490000: reporter [PCIE_PHY_RC_DRIVER_BFM] 3 consecutive invalid receptions - forcing symbol re-lock
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(417) @ 3350710000: reporter [PCIE_PHY_RC_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(844) @ 3356910000: reporter [PCIE_PHY_RC_DRIVER_BFM] Configuration.Linkwidth.Start: 2 consecutive REAL matches confirmed - last RX: link=0x0 lane=0xf7 id=0x4a (expected link=0x0 lane=PAD id=TS1_ID_BYTE)
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(642) @ 3340890000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Configuration.Linkwidth.Start
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(338) @ 3341110000: reporter [PCIE_PHY_EP_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(665) @ 3344110000: reporter [PCIE_PHY_EP_DRIVER_BFM] RX (Linkwidth.Start) #1: valid=1 link=0x0 lane=0xf7 id=0x4a link_latched=0
+# UVM_WARNING ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(535) @ 3350490000: reporter [PCIE_PHY_RC_DRIVER_BFM] 3 consecutive invalid receptions - forcing symbol re-lock
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(386) @ 3350710000: reporter [PCIE_PHY_RC_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(869) @ 3356910000: reporter [PCIE_PHY_RC_DRIVER_BFM] Configuration.Linkwidth.Start: 2 consecutive REAL matches confirmed - last RX: link=0x0 lane=0xf7 id=0x4a (expected link=0x0 lane=PAD id=TS1_ID_BYTE)
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(64) @ 3356910000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=LOOPBACK_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(94) @ 3356910000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Real dispatch: task_id=LTSSM_TASK_CFG_LINKWIDTH_ACCEPT
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(881) @ 3356910000: reporter [PCIE_PHY_RC_DRIVER_BFM] Entering Configuration.Linkwidth.Accept
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(906) @ 3356910000: reporter [PCIE_PHY_RC_DRIVER_BFM] Entering Configuration.Linkwidth.Accept
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(88) @ 3356930000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=L2_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(150) @ 3356930000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Real dispatch: task_id=LTSSM_TASK_CFG_LINKWIDTH_ACCEPT
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(739) @ 3356930000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Configuration.Linkwidth.Accept
-# UVM_WARNING ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(537) @ 3366510000: reporter [PCIE_PHY_RC_DRIVER_BFM] 3 consecutive invalid receptions - forcing symbol re-lock
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(417) @ 3366750000: reporter [PCIE_PHY_RC_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(912) @ 3369750000: reporter [PCIE_PHY_RC_DRIVER_BFM] Configuration.Linkwidth.Accept: REAL valid Lane group RX: lane0=0x0 lane1=0x1 lane2=0x2 lane3=0x3 (none PAD=0xf7)
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(727) @ 3356930000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Configuration.Linkwidth.Accept
+# UVM_WARNING ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(535) @ 3366510000: reporter [PCIE_PHY_RC_DRIVER_BFM] 3 consecutive invalid receptions - forcing symbol re-lock
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(386) @ 3366750000: reporter [PCIE_PHY_RC_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(937) @ 3369750000: reporter [PCIE_PHY_RC_DRIVER_BFM] Configuration.Linkwidth.Accept: REAL valid Lane group RX: lane0=0x0 lane1=0x1 lane2=0x2 lane3=0x3 (none PAD=0xf7)
 # UVM_INFO ../../src/hvl_top/test/sequences/rc_sequences//pcie_phy_rc_config_linkwidth_seq.sv(54) @ 3369750000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_ltssm_seqr_h@@rc_cfg_lw [pcie_phy_rc_config_linkwidth_seq] Configuration.Linkwidth complete - advancing to Lanenum.Wait
 # UVM_INFO ../../src/hvl_top/test/sequences/ep_sequences//pcie_phy_ep_config_linkwidth_seq.sv(52) @ 3369770000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_ltssm_seqr_h@@ep_cfg_lw [pcie_phy_ep_config_linkwidth_seq] Configuration.Linkwidth complete - advancing to Lanenum.Wait
 # UVM_INFO ../../src/hvl_top/test/sequences/rc_sequences//pcie_phy_rc_config_lanenum_seq.sv(31) @ 3369770000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_ltssm_seqr_h@@rc_cfg_ln [pcie_phy_rc_config_lanenum_seq] Starting pcie_phy_rc_config_lanenum_seq
 # UVM_INFO ../../src/hvl_top/test/sequences/ep_sequences//pcie_phy_ep_config_lanenum_seq.sv(28) @ 3369770000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_ltssm_seqr_h@@ep_cfg_ln [pcie_phy_ep_config_lanenum_seq] Starting pcie_phy_ep_config_lanenum_seq
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(64) @ 3369770000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=L0_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(94) @ 3369770000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Real dispatch: task_id=LTSSM_TASK_CFG_LANENUM_WAIT
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(955) @ 3369770000: reporter [PCIE_PHY_RC_DRIVER_BFM] Entering Configuration.Lanenum.Wait
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(980) @ 3369770000: reporter [PCIE_PHY_RC_DRIVER_BFM] Entering Configuration.Lanenum.Wait
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(88) @ 3369770000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=RECOVERY_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(150) @ 3369770000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Real dispatch: task_id=LTSSM_TASK_CFG_LANENUM_WAIT
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(1029) @ 3369770000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Configuration.Lanenum.Wait
-# UVM_WARNING ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(485) @ 3379370000: reporter [PCIE_PHY_EP_DRIVER_BFM] 3 consecutive invalid receptions - forcing symbol re-lock
-# UVM_WARNING ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(537) @ 3379370000: reporter [PCIE_PHY_RC_DRIVER_BFM] 3 consecutive invalid receptions - forcing symbol re-lock
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(370) @ 3379590000: reporter [PCIE_PHY_EP_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(417) @ 3379590000: reporter [PCIE_PHY_RC_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(987) @ 3385790000: reporter [PCIE_PHY_RC_DRIVER_BFM] Configuration.Lanenum.Wait: 2 consecutive REAL matches - RX link=0x0 lane0=0x0 (expected link=0x0 lane0=0x0)
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(1047) @ 3369770000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Configuration.Lanenum.Wait
+# UVM_WARNING ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(484) @ 3379370000: reporter [PCIE_PHY_EP_DRIVER_BFM] 3 consecutive invalid receptions - forcing symbol re-lock
+# UVM_WARNING ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(535) @ 3379370000: reporter [PCIE_PHY_RC_DRIVER_BFM] 3 consecutive invalid receptions - forcing symbol re-lock
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(338) @ 3379590000: reporter [PCIE_PHY_EP_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(386) @ 3379590000: reporter [PCIE_PHY_RC_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1012) @ 3385790000: reporter [PCIE_PHY_RC_DRIVER_BFM] Configuration.Lanenum.Wait: 2 consecutive REAL matches - RX link=0x0 lane0=0x0 (expected link=0x0 lane0=0x0)
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(64) @ 3385790000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=HOT_RESET_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(94) @ 3385790000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Real dispatch: task_id=LTSSM_TASK_CFG_LANENUM_ACCEPT
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1029) @ 3385790000: reporter [PCIE_PHY_RC_DRIVER_BFM] Entering Configuration.Lanenum.Accept
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1054) @ 3385790000: reporter [PCIE_PHY_RC_DRIVER_BFM] Entering Configuration.Lanenum.Accept
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(88) @ 3385810000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=POLLING_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(150) @ 3385810000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Real dispatch: task_id=LTSSM_TASK_CFG_LANENUM_ACCEPT
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(1095) @ 3385810000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Configuration.Lanenum.Accept
-# UVM_WARNING ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(537) @ 3395390000: reporter [PCIE_PHY_RC_DRIVER_BFM] 3 consecutive invalid receptions - forcing symbol re-lock
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(417) @ 3395630000: reporter [PCIE_PHY_RC_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1067) @ 3401830000: reporter [PCIE_PHY_RC_DRIVER_BFM] Configuration.Lanenum.Accept: 2 consecutive REAL matches - RX link=0x0 lane0=0x0 (expected link=0x0 lane0=0x0)
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(1113) @ 3385810000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Configuration.Lanenum.Accept
+# UVM_WARNING ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(535) @ 3395390000: reporter [PCIE_PHY_RC_DRIVER_BFM] 3 consecutive invalid receptions - forcing symbol re-lock
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(386) @ 3395630000: reporter [PCIE_PHY_RC_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1092) @ 3401830000: reporter [PCIE_PHY_RC_DRIVER_BFM] Configuration.Lanenum.Accept: 2 consecutive REAL matches - RX link=0x0 lane0=0x0 (expected link=0x0 lane0=0x0)
 # UVM_INFO ../../src/hvl_top/test/sequences/rc_sequences//pcie_phy_rc_config_lanenum_seq.sv(51) @ 3401830000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_ltssm_seqr_h@@rc_cfg_ln [pcie_phy_rc_config_lanenum_seq] Configuration.Lanenum complete - advancing to Complete
 # UVM_INFO ../../src/hvl_top/test/sequences/ep_sequences//pcie_phy_ep_config_lanenum_seq.sv(48) @ 3401850000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_ltssm_seqr_h@@ep_cfg_ln [pcie_phy_ep_config_lanenum_seq] Configuration.Lanenum complete - advancing to Complete
 # UVM_INFO ../../src/hvl_top/test/sequences/rc_sequences//pcie_phy_rc_config_complete_seq.sv(28) @ 3401850000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_ltssm_seqr_h@@rc_cfg_complete [pcie_phy_rc_config_complete_seq] Starting pcie_phy_rc_config_complete_seq
 # UVM_INFO ../../src/hvl_top/test/sequences/ep_sequences//pcie_phy_ep_config_complete_seq.sv(27) @ 3401850000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_ltssm_seqr_h@@ep_cfg_complete [pcie_phy_ep_config_complete_seq] Starting pcie_phy_ep_config_complete_seq
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(64) @ 3401850000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=L0s_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(94) @ 3401850000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Real dispatch: task_id=LTSSM_TASK_CFG_COMPLETE
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1132) @ 3401850000: reporter [PCIE_PHY_RC_DRIVER_BFM] Entering Configuration.Complete
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1157) @ 3401850000: reporter [PCIE_PHY_RC_DRIVER_BFM] Entering Configuration.Complete
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(88) @ 3401850000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=DISABLED_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(150) @ 3401850000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Real dispatch: task_id=LTSSM_TASK_CFG_COMPLETE
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(1189) @ 3401850000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Configuration.Complete
-# UVM_WARNING ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(485) @ 3411450000: reporter [PCIE_PHY_EP_DRIVER_BFM] 3 consecutive invalid receptions - forcing symbol re-lock
-# UVM_WARNING ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(537) @ 3411450000: reporter [PCIE_PHY_RC_DRIVER_BFM] 3 consecutive invalid receptions - forcing symbol re-lock
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(370) @ 3411670000: reporter [PCIE_PHY_EP_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(417) @ 3411670000: reporter [PCIE_PHY_RC_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1165) @ 3417870000: reporter [PCIE_PHY_RC_DRIVER_BFM] Configuration.Complete: 2 consecutive REAL TS2 matches - RX link=0x0 lane0=0x0 id=0x45 (expected id=TS2_ID_BYTE=0x45)
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(1207) @ 3401850000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Configuration.Complete
+# UVM_WARNING ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(484) @ 3411450000: reporter [PCIE_PHY_EP_DRIVER_BFM] 3 consecutive invalid receptions - forcing symbol re-lock
+# UVM_WARNING ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(535) @ 3411450000: reporter [PCIE_PHY_RC_DRIVER_BFM] 3 consecutive invalid receptions - forcing symbol re-lock
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(338) @ 3411670000: reporter [PCIE_PHY_EP_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(386) @ 3411670000: reporter [PCIE_PHY_RC_DRIVER_BFM] Symbol lock acquired (real COM found on lane 0)
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1190) @ 3417870000: reporter [PCIE_PHY_RC_DRIVER_BFM] Configuration.Complete: 2 consecutive REAL TS2 matches - RX link=0x0 lane0=0x0 id=0x45 (expected id=TS2_ID_BYTE=0x45)
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(64) @ 3417870000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=DETECT_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(94) @ 3417870000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Real dispatch: task_id=LTSSM_TASK_CFG_IDLE
-# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1203) @ 3417870000: reporter [PCIE_PHY_RC_DRIVER_BFM] Entering Configuration.Idle
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1229) @ 3417870000: reporter [PCIE_PHY_RC_DRIVER_BFM] Entering Configuration.Idle
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(88) @ 3417890000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=RECOVERY_ST requested_gen=GEN6 requested_width=X4
 # UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(150) @ 3417890000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Real dispatch: task_id=LTSSM_TASK_CFG_IDLE
-# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(1253) @ 3417890000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Configuration.Idle
-# UVM_ERROR ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1255) @ 3427870000: reporter [PCIE_PHY_RC_DRIVER_BFM] Configuration.Idle Timeout
-# UVM_ERROR ../../src/hvl_top/test/sequences/rc_sequences//pcie_phy_rc_config_complete_seq.sv(42) @ 3427870000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_ltssm_seqr_h@@rc_cfg_complete [pcie_phy_rc_config_complete_seq] Configuration.Complete/Idle failed - returned to Detect
-# UVM_ERROR ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(1284) @ 3581290000: reporter [PCIE_PHY_EP_DRIVER_BFM] Configuration.Idle: RC never reached readiness - returning to Detect
-# UVM_ERROR ../../src/hvl_top/test/sequences/ep_sequences//pcie_phy_ep_config_complete_seq.sv(41) @ 3581290000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_ltssm_seqr_h@@ep_cfg_complete [pcie_phy_ep_config_complete_seq] Configuration.Complete/Idle failed - returned to Detect
-# UVM_ERROR ../../src/hvl_top/test/virtual_sequences//pcie_phy_virtual_link_training_seq.sv(137) @ 3581290000: uvm_test_top.pcie_phy_env_h.pcie_phy_virtual_seqr_h@@vseq_h [pcie_phy_virtual_link_training_seq] Configuration.Complete/Idle failed on at least one side - stopping training
-# UVM_INFO verilog_src/uvm-1.1d/src/base/uvm_objection.svh(1268) @ 3581290000: reporter [TEST_DONE] 'run' phase is ready to proceed to the 'extract' phase
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(1272) @ 3417890000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering Configuration.Idle
+# UVM_WARNING ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(709) @ 3418470000: reporter [PCIE_PHY_RC_DRIVER_BFM] 3 consecutive invalid Idle receptions - forcing symbol re-lock
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(422) @ 3418710000: reporter [PCIE_PHY_RC_DRIVER_BFM] Symbol lock acquired (Idle pattern found on lane 0)
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1259) @ 3421110000: reporter [PCIE_PHY_RC_DRIVER_BFM] Configuration.Idle: 13 consecutive REAL Idle symbols confirmed (tx=16)
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(1299) @ 3421290000: reporter [PCIE_PHY_EP_DRIVER_BFM] Configuration.Idle: 17 consecutive REAL Idle symbols confirmed (tx=16)
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(1312) @ 3421290000: reporter [PCIE_PHY_EP_DRIVER_BFM] Configuration.Idle completed - Link Up (L0)
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1275) @ 3421290000: reporter [PCIE_PHY_RC_DRIVER_BFM] Configuration.Idle completed - Link Up (L0)
+# UVM_INFO ../../src/hvl_top/test/sequences/ep_sequences//pcie_phy_ep_config_complete_seq.sv(46) @ 3421290000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_ltssm_seqr_h@@ep_cfg_complete [pcie_phy_ep_config_complete_seq] Configuration.Idle complete - Link Up (L0)
+# UVM_INFO ../../src/hvl_top/test/sequences/rc_sequences//pcie_phy_rc_config_complete_seq.sv(47) @ 3421290000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_ltssm_seqr_h@@rc_cfg_complete [pcie_phy_rc_config_complete_seq] Configuration.Idle complete - Link Up (L0)
+# UVM_INFO ../../src/hvl_top/test/sequences/rc_sequences//pcie_phy_rc_l0_seq.sv(29) @ 3421290000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_ltssm_seqr_h@@rc_l0 [pcie_phy_rc_l0_seq] Starting pcie_phy_rc_l0_seq
+# UVM_INFO ../../src/hvl_top/test/sequences/ep_sequences//pcie_phy_ep_l0_seq.sv(24) @ 3421290000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_ltssm_seqr_h@@ep_l0 [pcie_phy_ep_l0_seq] Starting pcie_phy_ep_l0_seq
+# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(64) @ 3421290000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Dispatching req: target_state=L0_ST requested_gen=GEN6 requested_width=X4
+# UVM_INFO ../../src/hvl_top/rc//pcie_phy_rc_driver_proxy.sv(94) @ 3421290000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_drv_proxy_h [pcie_phy_rc_driver_proxy] Real dispatch: task_id=LTSSM_TASK_L0
+# UVM_INFO ../../src/hdl_top/rc_agent_bfm/pcie_phy_rc_driver_bfm.sv(1695) @ 3421290000: reporter [PCIE_PHY_RC_DRIVER_BFM] Entering L0
+# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(88) @ 3421290000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Dispatching req: target_state=L0_ST requested_gen=GEN6 requested_width=X4
+# UVM_INFO ../../src/hvl_top/ep//pcie_phy_ep_driver_proxy.sv(150) @ 3421290000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_drv_proxy_h [pcie_phy_ep_driver_proxy] Real dispatch: task_id=LTSSM_TASK_L0
+# UVM_INFO ../../src/hdl_top/ep_agent_bfm/pcie_phy_ep_driver_bfm.sv(1347) @ 3421290000: reporter [PCIE_PHY_EP_DRIVER_BFM] Entering L0
+# UVM_INFO ../../src/hvl_top/test/sequences/rc_sequences//pcie_phy_rc_l0_seq.sv(41) @ 3421290000: uvm_test_top.pcie_phy_env_h.pcie_phy_rc_agent_h[0].pcie_phy_rc_ltssm_seqr_h@@rc_l0 [pcie_phy_rc_l0_seq] Reached L0 - link trained
+# UVM_INFO ../../src/hvl_top/test/sequences/ep_sequences//pcie_phy_ep_l0_seq.sv(36) @ 3421290000: uvm_test_top.pcie_phy_env_h.pcie_phy_ep_agent_h[0].pcie_phy_ep_ltssm_seqr_h@@ep_l0 [pcie_phy_ep_l0_seq] Reached L0 - link trained
+# UVM_INFO ../../src/hvl_top/test/virtual_sequences//pcie_phy_virtual_link_training_seq.sv(160) @ 3421290000: uvm_test_top.pcie_phy_env_h.pcie_phy_virtual_seqr_h@@vseq_h [pcie_phy_virtual_link_training_seq] TRAINING COMPLETE - both RC and EP reached L0
+# UVM_INFO verilog_src/uvm-1.1d/src/base/uvm_objection.svh(1268) @ 3421290000: reporter [TEST_DONE] 'run' phase is ready to proceed to the 'extract' phase
 # 
 # --- UVM Report Summary ---
 # 
 # ** Report counts by severity
-# UVM_INFO :  134
-# UVM_WARNING :    8
-# UVM_ERROR :    5
+# UVM_INFO :  152
+# UVM_WARNING :    9
+# UVM_ERROR :    0
 # UVM_FATAL :    0
 # ** Report counts by id
-# [PCIE_PHY_EP_DRIVER_BFM]    30
-# [PCIE_PHY_RC_DRIVER_BFM]    42
+# [PCIE_PHY_EP_DRIVER_BFM]    32
+# [PCIE_PHY_RC_DRIVER_BFM]    46
 # [PCIE_PHY_RC_MONITOR_BFM]     1
 # [Questa UVM]     2
 # [RNTST]     1
@@ -275,7 +289,8 @@
 # [pcie_phy_ep_config_lanenum_seq]     2
 # [pcie_phy_ep_config_linkwidth_seq]     2
 # [pcie_phy_ep_detect_seq]     1
-# [pcie_phy_ep_driver_proxy]    21
+# [pcie_phy_ep_driver_proxy]    23
+# [pcie_phy_ep_l0_seq]     2
 # [pcie_phy_ep_monitor_proxy]     1
 # [pcie_phy_ep_polling_active_seq]     2
 # [pcie_phy_ep_polling_configuration_seq]     2
@@ -283,12 +298,13 @@
 # [pcie_phy_rc_config_lanenum_seq]     2
 # [pcie_phy_rc_config_linkwidth_seq]     2
 # [pcie_phy_rc_detect_seq]     1
-# [pcie_phy_rc_driver_proxy]    21
+# [pcie_phy_rc_driver_proxy]    23
+# [pcie_phy_rc_l0_seq]     2
 # [pcie_phy_rc_monitor_proxy]     1
 # [pcie_phy_rc_polling_active_seq]     2
 # [pcie_phy_rc_polling_configuration_seq]     2
 # [pcie_phy_virtual_link_training_seq]     3
 # ** Note: $finish    : /tools/mentor/questasim_10.6c/questasim/linux/../verilog_src/uvm-1.1d/src/base/uvm_root.svh(430)
-#    Time: 3581290 ns  Iteration: 67  Instance: /hvl_top
-# End time: 21:56:56 on Aug 23,2026, Elapsed time: 0:00:03
+#    Time: 3421290 ns  Iteration: 79  Instance: /hvl_top
+# End time: 22:08:49 on Aug 24,2026, Elapsed time: 0:00:03
 # Errors: 0, Warnings: 0

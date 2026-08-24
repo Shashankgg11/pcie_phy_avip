@@ -392,6 +392,42 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
                                   MAX_LOCK_SEARCH_EDGES))
   endtask : acquire_symbol_lock
 
+  // same idea as acquire_symbol_lock, but for Idle phases - Configuration.Idle
+  // and Recovery.Idle never send a COM, so searching for one there can never
+  // succeed. Searches for IDLE_SYMBOL's own known bit pattern instead.
+  task automatic acquire_idle_symbol_lock(output bit [9:0] locked_code [0:PCIE_MAX_LANES-1],
+                                           output bit       found);
+    bit [9:0]    window [0:PCIE_MAX_LANES-1];
+    int unsigned edges_searched;
+    localparam int unsigned MAX_LOCK_SEARCH_EDGES = 2000;
+
+    foreach (window[l]) window[l] = '0;
+    found          = 1'b0;
+    edges_searched = 0;
+
+    while (edges_searched < MAX_LOCK_SEARCH_EDGES) begin
+      @(rcCb);
+      edges_searched++;
+      for (int l = 0; l < rc_agent_cfg_h.active_lanes; l++)
+        window[l] = {rcCb.RX_P[l], window[l][9:1]};
+
+      if (window[0] == D_NEG_DISP[IDLE_SYMBOL] || window[0] == D_POS_DISP[IDLE_SYMBOL]) begin
+        for (int l = 0; l < rc_agent_cfg_h.active_lanes; l++) begin
+          locked_code[l] = window[l];
+          if (window[l] == D_NEG_DISP[IDLE_SYMBOL])      rx_lane_disparity[l] = RD_MINUS;
+          else if (window[l] == D_POS_DISP[IDLE_SYMBOL]) rx_lane_disparity[l] = RD_PLUS;
+        end
+        symbol_lock_acquired = 1'b1;
+        found = 1'b1;
+        `uvm_info(name, "Symbol lock acquired (Idle pattern found on lane 0)", UVM_MEDIUM)
+        return;
+      end
+    end
+
+    `uvm_warning(name, $sformatf("acquire_idle_symbol_lock: no Idle pattern found within %0d edges - giving up this attempt",
+                                  MAX_LOCK_SEARCH_EDGES))
+  endtask : acquire_idle_symbol_lock
+
   // waits for the partner's ready flag without killing our own TX loop, so both
   // sides stay on matching content until they're both ready to move on
   task automatic wait_for_partner_ready(ref bit partner_flag, input time max_wait_time,
@@ -623,12 +659,13 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
     bit [9:0] rx_encoded [0:PCIE_MAX_LANES-1];
     bit       all_ok;
 
-    //If the watchdog (below) forced a re-lock, actually perform it here - unlike
-    //receive_ts(), this task has no other caller that would do this search on its behalf.
+    //If the watchdog (below) forced a re-lock, search for IDLE_SYMBOL's own
+    //pattern - a COM search (like receive_ts uses) can never succeed here,
+    //since no COM is ever sent during this phase.
     if (!symbol_lock_acquired) begin
       bit [9:0] locked_code [0:PCIE_MAX_LANES-1];
       bit       lock_found;
-      acquire_symbol_lock(locked_code, lock_found);
+      acquire_idle_symbol_lock(locked_code, lock_found);
       if (!lock_found) begin
         foreach (rx_ok[l]) rx_ok[l] = 1'b0;
         foreach (rx_byte[l]) rx_byte[l] = '0;
@@ -657,7 +694,10 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
       bit decoded_is_k;
       decode_8b10b_symbol(rx_encoded[l], rx_lane_disparity[l], rx_byte[l], decoded_is_k, rx_ok[l]);
       rx_lane_disparity[l] = next_running_disparity(rx_encoded[l], rx_lane_disparity[l]);
-      if (!rx_ok[l] || decoded_is_k) all_ok = 1'b0; //Idle symbols are always plain D-codes
+      // must be a legal decode AND actually be an Idle symbol - a legal-but-wrong
+      // byte (phase off by a fraction, still lands on some other valid D-code)
+      // used to pass this check forever with no warning ever firing
+      if (!rx_ok[l] || decoded_is_k || rx_byte[l] != IDLE_SYMBOL) all_ok = 1'b0;
     end
 
     // same re-lock watchdog as receive_ts() - used to be missing here, which is
@@ -1215,6 +1255,8 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
 
       if ((idle_rx_count >= MIN_IDLE_RX) && (idle_tx_count >= MIN_IDLE_TX)) begin
         bit barrier_ok;
+        `uvm_info(name, $sformatf("Configuration.Idle: %0d consecutive REAL Idle symbols confirmed (tx=%0d)",
+                                   idle_rx_count, idle_tx_count), UVM_LOW)
         `uvm_info(name, "Configuration.Idle local condition met - waiting for EP", UVM_HIGH)
         rc_ready_idle = 1'b1;
         wait_for_partner_ready(ep_ready_idle, time'(TIMEOUT_IDLE_MS * 1ms), barrier_ok);
