@@ -1,63 +1,42 @@
-//EP_TX
  
 `ifndef PCIE_PHY_EP_TX_INCLUDED_
 
 `define PCIE_PHY_EP_TX_INCLUDED_
- 
 //--------------------------------------------------------------------------------------------
-
 // Class: pcie_phy_ep_tx
-
-// This class holds the data items required to drive PHY directives
-
-// to the Upstream Port (Endpoint) LTSSM and also holds methods that manipulate those items.
-
 //--------------------------------------------------------------------------------------------
-
 class pcie_phy_ep_tx extends uvm_sequence_item;
-
   `uvm_object_utils(pcie_phy_ep_tx)
- 
   pcie_phy_ep_agent_config pcie_phy_ep_agent_cfg_h;
- 
   //Variable: target_state
-
   rand ltssm_state_e target_state;
-
   //Variable: is_bfm_verify_item
-  //Test/debug-only. When set, the driver_proxy dispatches strictly off requested_task
-  //instead of target_state - used by BFM-exerciser verification sequences to call a
-  //specific driver_bfm task directly, regardless of LTSSM protocol ordering.
+  //Used for test and debug. When set, the driver_proxy uses requested_task
+  //instead of target_state to call a specific driver_bfm task.
   bit is_bfm_verify_item;
 
   //Variable: requested_task
-  //Only meaningful when is_bfm_verify_item == 1.
+  //Used when is_bfm_verify_item is set to 1.
   bfm_verify_task_e requested_task;
  
   //Variable: requested_gen
-
-  // Uses pcie_gen_e directly since the package already models speed as
-
-  // a proper enum (GEN1..GEN6) rather than a raw Sym4 hex value.
-
+  //Uses pcie_gen_e since the package already defines GEN1 to GEN6 as an enum.
   rand pcie_gen_e requested_gen;
  
   //Variable: requested_width
-
-  // Uses the package's link_width_e rather than a raw lane count.
-
+  //Uses link_width_e instead of using a raw lane count.
   rand link_width_e requested_width;
  
   //-------------------------------------------------------
   // Variable: task_id
-  // THE real dispatch selector, used whenever is_bfm_verify_item == 0 - mirrors
-  // pcie_phy_rc_tx's identical field. Names exactly one driver_bfm task.
+  //Used to select the driver_bfm task when is_bfm_verify_item is 0.
+  //Each value selects one driver_bfm task.
   //-------------------------------------------------------
   pcie_phy_ltssm_task_e task_id;
 
   //-------------------------------------------------------
-  // Response fields - filled in by driver_proxy after dispatching to the real driver_bfm
-  // task. Mirrors pcie_phy_rc_tx's identical fields.
+  // Response fields - updated by driver_proxy after calling the driver_bfm task.
+  //These fields are also present in pcie_phy_rc_tx.
   //-------------------------------------------------------
   ltssm_state_e      rsp_state;
   detect_substate_e  rsp_detect_substate;
@@ -65,24 +44,16 @@ class pcie_phy_ep_tx extends uvm_sequence_item;
   config_substate_e  rsp_config_substate;
 
   //Variable: l0p_request
-
-  // Requests entry into L0p (partial-width low-power link state) once L0
-
-  // is reached — EP-initiated in real PCIe, so this directive lives here
-
-  // and not on the RC side. Only meaningful when target_state == L0_ST.
-
+  //Requests the link to enter L0p after reaching L0.
+  //This is an EP-side request, so it is kept here instead of the RC side.
+  //It is only used when target_state is L0_ST.
   rand bit l0p_request;
  
-  // NOTE: an error-injection directive field (e.g. force sub-state
+  // NOTE: An error injection field could be added here later, such as forcing a
+  // sub-state timeout or symbol-lock loss. The required enum
+  // (pcie_phy_error_inject_e) is not currently defined in pcie_phy_pkg.
 
-  // timeout, force symbol-lock loss) would normally live here, but the
-
-  // enum type it needs (pcie_phy_error_inject_e) isn't defined in
-
-  // pcie_phy_pkg yet. Left out rather than referencing an undefined
-
-  // type — add once that enum exists in the package.
+  // It is left out for now and can be added when the enum is available.
  
   //-------------------------------------------------------
 
@@ -110,7 +81,7 @@ class pcie_phy_ep_tx extends uvm_sequence_item;
  
   //-------------------------------------------------------
 
-  // Externally defined Tasks and Functions
+  // External Tasks and Functions
 
   //-------------------------------------------------------
 
@@ -124,14 +95,6 @@ endclass : pcie_phy_ep_tx
 
 // Construct: new
 
-// Initializes class object
-
-//
-
-// Parameters:
-
-//  name - pcie_phy_ep_tx
-
 //--------------------------------------------------------------------------------------------
 
 function pcie_phy_ep_tx::new(string name = "pcie_phy_ep_tx");
@@ -143,15 +106,6 @@ endfunction : new
 //--------------------------------------------------------------------------------------------
 
 // Function: do_print
-
-// Prints every directive field so waveform-less log debug is possible.
-
-//
-
-// Parameters:
-
-//  printer - uvm_printer
-
 //--------------------------------------------------------------------------------------------
 
 function void pcie_phy_ep_tx::do_print(uvm_printer printer);
@@ -171,5 +125,3 @@ function void pcie_phy_ep_tx::do_print(uvm_printer printer);
 endfunction : do_print
  
 `endif
- 
- 
