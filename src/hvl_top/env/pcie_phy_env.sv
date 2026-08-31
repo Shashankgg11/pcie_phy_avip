@@ -34,10 +34,6 @@ endclass : pcie_phy_env
 
 //--------------------------------------------------------------------------------------------
 // Construct: new
-// Initializes class object
-//
-// Parameters:
-//  name - pcie_phy_env
 //  parent - parent under which this component is created
 //--------------------------------------------------------------------------------------------
 function pcie_phy_env::new(string name = "pcie_phy_env", uvm_component parent = null);
@@ -46,10 +42,6 @@ endfunction : new
 
 //--------------------------------------------------------------------------------------------
 // Function: build_phase
-// <Description_here>
-//
-// Parameters:
-//  phase - uvm phase
 //--------------------------------------------------------------------------------------------
 function void pcie_phy_env::build_phase(uvm_phase phase);
   super.build_phase(phase);
@@ -98,10 +90,6 @@ endfunction : build_phase
 
 //--------------------------------------------------------------------------------------------
 // Function: connect_phase
-// <Description_here>
-//
-// Parameters:
-//  phase - uvm phase
 //--------------------------------------------------------------------------------------------
 function void pcie_phy_env::connect_phase(uvm_phase phase);
   super.connect_phase(phase);
