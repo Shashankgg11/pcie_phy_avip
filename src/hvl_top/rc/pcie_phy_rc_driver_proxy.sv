@@ -3,9 +3,8 @@
 
 //--------------------------------------------------------------------------------------------
 // Class: pcie_phy_rc_driver_proxy
-// Driver proxy for the Downstream Port (Root Complex).
-// Extends uvm_driver; pulls pcie_phy_rc_tx items from the sequencer and
-// drives them via the virtual pcie_phy_rc_driver_bfm handle obtained from config_db.
+// Driver proxy for the Root Complex (Downstream Port).
+// Gets pcie_phy_rc_tx items from the sequencer and sends them to the RC driver BFM.
 //--------------------------------------------------------------------------------------------
 class pcie_phy_rc_driver_proxy extends uvm_driver #(pcie_phy_rc_tx);
   `uvm_component_utils(pcie_phy_rc_driver_proxy)
@@ -20,7 +19,7 @@ class pcie_phy_rc_driver_proxy extends uvm_driver #(pcie_phy_rc_tx);
   pcie_phy_rc_tx req;
 
   //-------------------------------------------------------
-  // Externally defined Tasks and Functions
+  // External Tasks and Functions
   //-------------------------------------------------------
   extern function new(string name = "pcie_phy_rc_driver_proxy", uvm_component parent = null);
   extern virtual function void build_phase(uvm_phase phase);
@@ -128,12 +127,9 @@ task pcie_phy_rc_driver_proxy::run_phase(uvm_phase phase);
           pcie_phy_rc_drv_bfm_h.run_configuration_idle();
 
         LTSSM_TASK_L0: begin
-          //run_l0() runs indefinitely during healthy operation - only returns on a
-          //Recovery-triggering condition (speed mismatch, errors, directed request, idle
-          //timeout). Dispatched fire-and-forget: reaching L0 IS the success signal for a
-          //training-completion test, not waiting for something to eventually go wrong.
-          //Sets next_state on the BFM itself (not req.rsp_state directly) so the
-          //unconditional copy-back below picks it up correctly instead of overwriting it.
+          //run_l0() keeps running during normal operation and only returns when
+          //a condition causes Recovery. Reaching L0 means the training is complete.
+          //The BFM next_state is set so the value is copied back correctly.
           fork
             pcie_phy_rc_drv_bfm_h.run_l0();
           join_none
