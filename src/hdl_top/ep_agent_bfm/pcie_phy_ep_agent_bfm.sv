@@ -5,7 +5,7 @@ import pcie_phy_pkg::*;
 
 //--------------------------------------------------------------------------------------------
 // Module: pcie_phy_ep_agent_bfm
-// Instantiates the ep driver_bfm and monitor_bfm and wires them to this port's pcie_phy_if
+// Instantiates the ep driver_bfm and monitor_bfm and connect them to this port's pcie_phy_if
 //--------------------------------------------------------------------------------------------
 module pcie_phy_ep_agent_bfm #(parameter int EP_ID = 0)(pcie_phy_if intf);
 
@@ -22,9 +22,7 @@ module pcie_phy_ep_agent_bfm #(parameter int EP_ID = 0)(pcie_phy_if intf);
     .pclk(intf.pclk), .preset_n(intf.preset_n),
     .RX_P(intf.RX_P[PCIE_MAX_LANES-1:0]), .RX_N(intf.RX_N[PCIE_MAX_LANES-1:0])
   );
-
-  //Reserved/unused lanes above PCIE_MAX_LANES: pcie_phy_if's buses are a fixed 32 bits wide;
-  //tie off whatever this profile doesn't use so TX_P/TX_N are never partially undriven.
+ //unused lanes assigned to 0
   assign intf.TX_P[31:PCIE_MAX_LANES] = '0;
   assign intf.TX_N[31:PCIE_MAX_LANES] = '0;
 
