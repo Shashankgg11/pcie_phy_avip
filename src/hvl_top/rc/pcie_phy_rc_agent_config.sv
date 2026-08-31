@@ -4,56 +4,52 @@
 class pcie_phy_rc_agent_config extends uvm_object;
   `uvm_object_utils(pcie_phy_rc_agent_config)
  
-  //Used for creating the agent in either passive or active mode
+  //Used to create the agent in active or passive mode
   uvm_active_passive_enum is_active = UVM_ACTIVE;
  
-  //Used for enabling the RC agent's functional coverage
+  //Used to enable functional coverage for the RC agent
   bit has_coverage;
  
-  //Identifies this Root Complex / Root Port instance (systems with multiple Root Ports
+  //Identifies this Root Complex / Root Port instance
   int rc_id;
  
   //-------------------------------------------------------
-  // Link capability (advertised)
+  // Link capability
   //-------------------------------------------------------
  
-  //Highest Gen the RC is capable of - caps how far SPEED_UPGRADE_SEQUENCE is allowed
-  //to walk
+  //Highest Gen supported by the RC. This limits the SPEED_UPGRADE_SEQUENCE
+  //to the supported speed
   pcie_gen_e max_link_speed = GEN6;
  
-  //Gen this test wants the link trained to for this run (<= max_link_speed)
+  //Target Gen for this test. It should be less than or equal to max_link_speed
   rand pcie_gen_e target_link_speed;
  
-  //Widest link the RC can support
+  //Maximum link width supported by the RC
   link_width_e max_link_width = X16;
   
   int detect_timeout_cycles = 24; 
-  int config_timeout_ts_count = 50; //was 2 - mathematically insufficient: Linkwidth.Start
-                                     //alone needs a minimum of 3 real round trips (EP latch
-                                     //+ RC's 2 consecutive echo matches) even under perfect
-                                     //reception. 50 gives ~160us of real budget at ~3.2us per
-                                     //TS1 - comfortable margin for retries, not just the
-                                     //theoretical minimum. Shared by every Configuration
-                                     //substate (Linkwidth/Lanenum/Complete/Idle), all of which
-                                     //are genuinely multi-round-trip.
-  //Lanes actually driven/monitored by the RC for the current test profile
+  int config_timeout_ts_count = 50; //Changed from 2. Linkwidth.Start needs multiple round trips
+                                     //even when reception is good. 50 gives enough time for
+                                     //retries and is also used by the other Configuration
+                                     //substates.
+  //Number of lanes used by the RC in the current test
   int active_lanes = ACTIVE_LANES;
  
-  //N_FTS value the RC advertises in Symbol 3 of its TS1/TS2. Defaults to NTFS_RC -
-  //override per test if you need to exercise a different value.
+  //N_FTS value sent by the RC in Symbol 3 of TS1/TS2. Uses NTFS_RC by default
+  //and can be changed in the test if needed
   bit [7:0] ntfs = NTFS_RC;
  
   //Variable: initial_disparity
   running_disparity_e initial_disparity = RD_MINUS;
 
   //Variable: link_number
-  //RC CHOOSES this value and drives it during Configuration.Linkwidth.Start (unlike EP,
-  //which learns its Link Number from the RC instead of choosing one).
+  //RC selects this value and sends it during Configuration.Linkwidth.Start.
+  //The EP gets its Link Number from the RC.
   bit [7:0] link_number = 8'h00;
 
   //-------------------------------------------------------
-  // Default Symbol 4/5 control-bit values this RC drives in every TS unless a specific
-  // task/test overrides them - one canonical place instead of hardcoding at every call site.
+  // Default Symbol 4/5 control values used by the RC in TS
+  //These values can be changed by a task or test when needed
   //-------------------------------------------------------
   bit       default_autonomous_change = 1'b0;
   bit [1:0] default_elbc              = 2'b11; //Modified TS1/TS2 supported
@@ -62,32 +58,33 @@ class pcie_phy_rc_agent_config extends uvm_object;
   bit       default_disable_link      = 1'b0;
   bit       default_hot_reset         = 1'b0;
  
-  //Whether the RC is willing to negotiate FLIT_MODE at all. Ignored (forced 1) once
+  //Shows whether the RC supports FLIT_MODE. It is forced to 1 when
   //target_link_speed reaches FLIT_MODE_MANDATORY_FROM_GEN.
   bit flit_mode_capable = 1;
  
-    //What the RC proposes for actual data transfer once L0 is reached, subject to
-  //partner negotiation and the GEN6-mandatory override
+  //Transfer mode preferred by the RC when the link reaches L0
+  //This depends on partner negotiation and the GEN6 requirement
   data_transfer_mode_e preferred_transfer_mode = FLIT_MODE;
 
   //Variable: use_modified_ts1_ts2_ordered_set
-  //Test-level override to force Modified TS1/TS2 Ordered-Set usage from the start
+  //Test option to use Modified TS1/TS2 Ordered Sets from the beginning
   bit use_modified_ts1_ts2_ordered_set;
 
   //-------------------------------------------------------
   // RC-specific role behavior
   //-------------------------------------------------------
  
-  //RC is always the Upstream Port on a direct RC<->EP link - it drives
-  //Configuration.Linkwidth.Start first (the EP, as Downstream Port, responds).
-    bit is_upstream_port = 1;
+  //RC is the Upstream Port on a direct RC to EP link. It sends
+  //Configuration.Linkwidth.Start first and the EP responds.
+  bit is_upstream_port = 1;
  
-  //Convenience flag mirroring is_upstream_port, read directly by run_linkwidth_start()
-  //instead of every task re-deriving it
+  //Used by run_linkwidth_start() to show that the RC starts the link width process
+  //instead of checking it again in every task
   bit initiates_linkwidth_start = 1;
  
   //-------------------------------------------------------
-  // Timing knobs (override the package defaults per instance/test)
+  // Timing settings
+  //These values can be changed for a specific instance or test
   //-------------------------------------------------------
   int detect_timeout_ms   = DETECT_TIMEOUT_MS;
   int polling_timeout_ms  = POLLING_TIMEOUT_MS;
@@ -95,7 +92,8 @@ class pcie_phy_rc_agent_config extends uvm_object;
   int recovery_timeout_ms = RECOVERY_TIMEOUT_MS;
  
   //-------------------------------------------------------
-  // Electrical Sub-block assumption overrides
+  // Electrical Sub-block assumptions
+  //These values can be overridden when needed
   //-------------------------------------------------------
   bit rx_detect_assumed            = RX_DETECT_ASSUMED;
   bit pll_lock_assumed             = PLL_LOCK_ASSUMED;
@@ -103,10 +101,10 @@ class pcie_phy_rc_agent_config extends uvm_object;
   bit eq_done_assumed              = EQ_DONE_ASSUMED;
  
   //-------------------------------------------------------
-  // Test-injection knobs
+  // Test-injection settings
   //-------------------------------------------------------
  
-  // Externally defined Tasks and Functions
+  // External Tasks and Functions
   //-------------------------------------------------------
   extern function new(string name = "pcie_phy_rc_agent_config");
   extern function void do_print(uvm_printer printer);
@@ -116,24 +114,20 @@ class pcie_phy_rc_agent_config extends uvm_object;
   //-------------------------------------------------------
  
   //Constraint: c_target_speed_within_max
-  //Never target a speed the RC doesn't claim to support
+  //Makes sure the target speed is supported by the RC
   constraint c_target_speed_within_max {
     target_link_speed <= max_link_speed;
   }
  
 endclass : pcie_phy_rc_agent_config
  
-//--------------------------------------------------------------------------------------------
-// Construct: new
-//--------------------------------------------------------------------------------------------
+//Construct: new
 function pcie_phy_rc_agent_config::new(string name = "pcie_phy_rc_agent_config");
   super.new(name);
 endfunction : new
  
  
-//--------------------------------------------------------------------------------------------
-// Function: do_print method
-//--------------------------------------------------------------------------------------------
+//Function: do_print method
 function void pcie_phy_rc_agent_config::do_print(uvm_printer printer);
   super.do_print(printer);
  
