@@ -3,7 +3,6 @@
 
 //--------------------------------------------------------------------------------------------
 // Class: pcie_phy_ep_agent
-// Configurable agent for the Upstream Port (Endpoint): creates active/passive
 // components (ltssm_sequencer, driver_proxy, monitor_proxy, coverage) for PCIe Gen6 PHY
 //--------------------------------------------------------------------------------------------
 class pcie_phy_ep_agent extends uvm_agent;
@@ -35,11 +34,6 @@ endclass : pcie_phy_ep_agent
 
 //--------------------------------------------------------------------------------------------
 // Construct: new
-// Initializes class object
-//
-// Parameters:
-//  name - pcie_phy_ep_agent
-//  parent - parent under which this component is created
 //--------------------------------------------------------------------------------------------
 function pcie_phy_ep_agent::new(string name = "pcie_phy_ep_agent", uvm_component parent = null);
   super.new(name, parent);
@@ -47,10 +41,6 @@ endfunction : new
 
 //--------------------------------------------------------------------------------------------
 // Function: build_phase
-// <Description_here>
-//
-// Parameters:
-//  phase - uvm phase
 //--------------------------------------------------------------------------------------------
 function void pcie_phy_ep_agent::build_phase(uvm_phase phase);
   super.build_phase(phase);
@@ -69,10 +59,6 @@ endfunction : build_phase
 
 //--------------------------------------------------------------------------------------------
 // Function: connect_phase
-// <Description_here>
-//
-// Parameters:
-//  phase - uvm phase
 //--------------------------------------------------------------------------------------------
 function void pcie_phy_ep_agent::connect_phase(uvm_phase phase);
   super.connect_phase(phase);
