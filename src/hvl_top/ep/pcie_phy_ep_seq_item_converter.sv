@@ -17,10 +17,6 @@ endclass : pcie_phy_ep_seq_item_converter
 
 //--------------------------------------------------------------------------------------------
 // Construct: new
-// Initializes class object
-//
-// Parameters:
-//  name - pcie_phy_ep_seq_item_converter
 //--------------------------------------------------------------------------------------------
 function pcie_phy_ep_seq_item_converter::new(string name = "pcie_phy_ep_seq_item_converter");
   super.new(name);
