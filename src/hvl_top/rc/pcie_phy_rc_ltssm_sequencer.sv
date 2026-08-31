@@ -3,7 +3,6 @@
 
 //--------------------------------------------------------------------------------------------
 // Class: pcie_phy_rc_ltssm_sequencer
-// LTSSM sequencer for the Downstream Port (Root Complex)
 //--------------------------------------------------------------------------------------------
 class pcie_phy_rc_ltssm_sequencer extends uvm_sequencer#(pcie_phy_rc_tx);
   `uvm_component_utils(pcie_phy_rc_ltssm_sequencer)
@@ -23,11 +22,6 @@ endclass : pcie_phy_rc_ltssm_sequencer
 
 //--------------------------------------------------------------------------------------------
 // Construct: new
-// Initializes class object
-//
-// Parameters:
-//  name - pcie_phy_rc_ltssm_sequencer
-//  parent - parent under which this component is created
 //--------------------------------------------------------------------------------------------
 function pcie_phy_rc_ltssm_sequencer::new(string name = "pcie_phy_rc_ltssm_sequencer", uvm_component parent = null);
   super.new(name, parent);
@@ -35,10 +29,6 @@ endfunction : new
 
 //--------------------------------------------------------------------------------------------
 // Function: build_phase
-// <Description_here>
-//
-// Parameters:
-//  phase - uvm phase
 //--------------------------------------------------------------------------------------------
 function void pcie_phy_rc_ltssm_sequencer::build_phase(uvm_phase phase);
   super.build_phase(phase);
@@ -46,10 +36,6 @@ endfunction : build_phase
 
 //--------------------------------------------------------------------------------------------
 // Function: connect_phase
-// <Description_here>
-//
-// Parameters:
-//  phase - uvm phase
 //--------------------------------------------------------------------------------------------
 function void pcie_phy_rc_ltssm_sequencer::connect_phase(uvm_phase phase);
   super.connect_phase(phase);
@@ -57,10 +43,6 @@ endfunction : connect_phase
 
 //--------------------------------------------------------------------------------------------
 // Task: run_phase
-// <Description_here>
-//
-// Parameters:
-//  phase - uvm phase
 //--------------------------------------------------------------------------------------------
 task pcie_phy_rc_ltssm_sequencer::run_phase(uvm_phase phase);
 
