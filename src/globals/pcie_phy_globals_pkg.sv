@@ -4,21 +4,21 @@
 package pcie_phy_pkg;
  
   //=========================================================================================
-  // PARAMETERS
+  // Parameters
   //=========================================================================================
  
   //-------------------------------------------------------
-  // Link / lane configuration
+  // Link and lane configuration
   //-------------------------------------------------------
-  parameter int PCIE_MAX_LANES    = 16;  //Max lanes this AVIP is built to support
-  parameter int ACTIVE_LANES      = 4;   //Active profile link width
-  parameter int MAX_LINK_WIDTH_RC = 16;  //RC max supported width
-  parameter int MAX_LINK_WIDTH_EP = 16;  //EP max supported width
-  parameter int MAX_LINK_SPEED    = 6;   //Max Gen supported (GEN6)
+  parameter int PCIE_MAX_LANES    = 16;  // Maximum lanes supported
+  parameter int ACTIVE_LANES      = 4;   // Active link width
+  parameter int MAX_LINK_WIDTH_RC = 16;  // Maximum RC link width
+  parameter int MAX_LINK_WIDTH_EP = 16;  // Maximum EP link width
+  parameter int MAX_LINK_SPEED    = 6;   // Maximum supported Gen
   parameter int SYMBOL_WIDTH      = 8;
  
   //-------------------------------------------------------
-  // Ordered-Set / Symbol length parameters (logical framing)
+  // Ordered set and symbol lengths
   //-------------------------------------------------------
   parameter int TS_OS_LENGTH  = 16;  //TS1/TS2: 1 COM + 15 data symbols
   parameter int SKP_OS_LENGTH = 4;   //SKIP: 1 COM + 3 SKP
@@ -29,67 +29,65 @@ package pcie_phy_pkg;
   parameter bit [7:0] N_FTS_DEFAULT = 8'h3C;
  
   //-------------------------------------------------------
-  // LTSSM timeouts / counters
+  // LTSSM timeouts and counters
   //-------------------------------------------------------
   parameter int DETECT_TIMEOUT_MS   = 12;
   parameter int POLLING_TIMEOUT_MS  = 24;
   parameter int CONFIG_TIMEOUT_MS   = 2;
   parameter int RECOVERY_TIMEOUT_MS = 24;
  
-  parameter int TIMEOUT_LINKWIDTH_MS = 24; //Config.Linkwidth.Start/Accept
-  parameter int TIMEOUT_LANENUM_MS   = 2;  //Config.Lanenum.Wait/Accept
-  parameter int TIMEOUT_COMPLETE_MS  = 2;  //Config.Complete
-  parameter int TIMEOUT_IDLE_MS      = 2;  //Config.Idle
+  parameter int TIMEOUT_LINKWIDTH_MS = 24; // Config.Linkwidth.Start/Accept timeout
+  parameter int TIMEOUT_LANENUM_MS   = 2;  // Config.Lanenum.Wait/Accept timeout
+  parameter int TIMEOUT_COMPLETE_MS  = 2;  // Config.Complete timeout
+  parameter int TIMEOUT_IDLE_MS      = 2;  // Config.Idle timeout
  
-  parameter int TS1_1024_COUNT      = 1024; //Polling.Active: TS1 sent before falling
+  parameter int TS1_1024_COUNT      = 1024; // Number of TS1 sent in Polling.Active before timeout
                                              //back to Polling.Compliance with no response
-  parameter int CONSEC_TS_REQUIRED  = 2;    //Consecutive matching TS to advance most sub-states
-  parameter int CONSEC_TS_COUNT     = 8;    //Consecutive matching TS/IDL required (generic)
-  parameter int CONSEC_TS2_COMPLETE = 8;    //Consecutive TS2 rx required to exit Config.Complete
-  parameter int MIN_TS2_TX_COMPLETE = 16;   //Min TS2 tx after first rx, to exit Config.Complete
-  parameter int MIN_IDLE_TX         = 16;   //Min Idle symbols tx after first rx, to exit Config.Idle
-  parameter int MIN_IDLE_RX         = 8;    //Min consecutive Idle symbols rx, to exit Config.Idle
-  parameter int IDLE_COUNT          = 8;    //Generic idle-symbol threshold alias
+  parameter int CONSEC_TS_REQUIRED  = 2;    // Matching TS count needed to advance
+  parameter int CONSEC_TS_COUNT     = 8;    // Generic matching TS/Idle count
+  parameter int CONSEC_TS2_COMPLETE = 8;    // TS2 count needed to exit Config.Complete
+  parameter int MIN_TS2_TX_COMPLETE = 16;   // Minimum TS2 TX count before leaving Config.Complete
+  parameter int MIN_IDLE_TX         = 16;   // Minimum Idle TX count before leaving Config.Idle
+  parameter int MIN_IDLE_RX         = 8;    // Minimum Idle RX count before leaving Config.Idle
+  parameter int IDLE_COUNT          = 8;    // Generic Idle count
  
-  // logical symbol IDs used for ordered-set/packet content - bit-level line
-  // encoding (Electrical Sub-block) isn't modeled here
-  parameter bit [7:0] COM_SYMBOL   = 8'hBC; //Comma - OS start, resets scrambler LFSR
-  parameter bit [7:0] PAD_SYMBOL   = 8'hF7; //Pad - unassigned Link#/Lane#
-  parameter bit [7:0] TS1_ID_BYTE  = 8'h4A; //TS1 identifier symbol (D10.2)
-  parameter bit [7:0] TS2_ID_BYTE  = 8'h45; //TS2 identifier symbol (D5.2)
+  // Logical symbol IDs used for ordered sets and packets
+  // Electrical bit encoding is not modeled here
+  parameter bit [7:0] COM_SYMBOL   = 8'hBC; // Comma - ordered set start
+  parameter bit [7:0] PAD_SYMBOL   = 8'hF7; // Pad - unused Link/Lane number
+  parameter bit [7:0] TS1_ID_BYTE  = 8'h4A; // TS1 identifier
+  parameter bit [7:0] TS2_ID_BYTE  = 8'h45; // TS2 identifier
 
-  // Modified TS1/TS2 (Gen3+) ID bytes and EC field values. use_modified_ts
-  // latches true once current_speed hits Gen3+ and stays true - no reverting
+  // Modified TS1/TS2 ID and EC values
+  // Enabled once the speed reaches Gen3+
   parameter bit [7:0] MOD_TS1_ID = 8'h1E;
   parameter bit [7:0] MOD_TS2_ID = 8'h2D;
 
-  //EC field values - occupy bits[7:6] of byte 5 in the Modified TS format. EC=01b covers
-  //BOTH Phase 0 (preset loading) and Phase 1 (FS/LF exchange) - the two phases share this
-  //wire value and are distinguished by LTSSM-internal behavior, not by EC itself.
-  parameter bit [7:0] EC_PHASE0_1 = 8'h40; //bits[7:6]=01
-  parameter bit [7:0] EC_PHASE2   = 8'h80; //bits[7:6]=10
-  parameter bit [7:0] EC_PHASE3   = 8'hC0; //bits[7:6]=11
-  parameter bit [7:0] EC_DONE     = 8'h00; //bits[7:6]=00 - equalization complete
+  // EC field values are in bits[7:6] of byte 5 in Modified TS
+  parameter bit [7:0] EC_PHASE0_1 = 8'h40; // bits[7:6] = 01
+  parameter bit [7:0] EC_PHASE2   = 8'h80; // bits[7:6] = 10
+  parameter bit [7:0] EC_PHASE3   = 8'hC0; // bits[7:6] = 11
+  parameter bit [7:0] EC_DONE     = 8'h00; // bits[7:6] = 00 - equalization complete
 
-  parameter bit [7:0] IDLE_SYMBOL  = 8'h00; //Logical Idle data symbol (D0.0) - corrected
-  parameter bit [7:0] EIE_SYM      = 8'hFC; //Electrical Idle Exit (logical marker)
+  parameter bit [7:0] IDLE_SYMBOL  = 8'h00; // Logical Idle data symbol
+  parameter bit [7:0] EIE_SYM      = 8'hFC; // Electrical Idle Exit marker
   parameter bit [7:0] IDL_SYM      = 8'h7C; //Electrical Idle (K28.3) - EIOS content for
                                              //Recovery.Speed, distinct from EIE_SYM above
-  parameter bit [7:0] SDS_SYM      = 8'hE1; //Start of Data Stream
-  parameter bit [7:0] SKP_SYMBOL   = 8'hAA; //Skip
-  parameter bit [7:0] FTS_ID       = 8'h55; //FTS identifier symbol
+  parameter bit [7:0] SDS_SYM      = 8'hE1; // Start of Data Stream
+  parameter bit [7:0] SKP_SYMBOL   = 8'hAA; // Skip symbol
+  parameter bit [7:0] FTS_ID       = 8'h55; // FTS identifier
  
   //-------------------------------------------------------
-  // NON_FLIT_MODE framing tokens - 128b/130b, GEN3-GEN5 only (logical framing)
+  // NON_FLIT_MODE framing tokens - GEN3 to GEN5
   //-------------------------------------------------------
-  parameter bit [7:0] STP_TOKEN = 8'hFB; //Start TLP
-  parameter bit [7:0] SDP_TOKEN = 8'h5C; //Start DLLP
-  parameter bit [7:0] END_TOKEN = 8'hFD; //End (good)
-  parameter bit [7:0] EDB_TOKEN = 8'hFE; //End Bad
+  parameter bit [7:0] STP_TOKEN = 8'hFB; // Start TLP
+  parameter bit [7:0] SDP_TOKEN = 8'h5C; // Start DLLP
+  parameter bit [7:0] END_TOKEN = 8'hFD; // End good
+  parameter bit [7:0] EDB_TOKEN = 8'hFE; // End bad
  
   
   //-------------------------------------------------------
-  // FLIT_MODE parameters - fixed 256B Flit carrying Upper Layer TLP/DLLP content
+  // FLIT_MODE parameters - 256B Flit
   //-------------------------------------------------------
   parameter int FLIT_BYTES             = 256;
   parameter int FLIT_TLP_PAYLOAD_BYTES = 236;
@@ -97,8 +95,7 @@ package pcie_phy_pkg;
   parameter int FLIT_CRC_BYTES         = 8;
   parameter int FLIT_FEC_BYTES         = 6;
 
-  // Struct: flit_t - flat layout: TLP payload + DLP + CRC + FEC
-  // (236+6+8+6 = 256 bytes = FLIT_BYTES)
+  // Flit structure: TLP payload + DLP + CRC + FEC
   typedef struct packed {
     logic [(FLIT_TLP_PAYLOAD_BYTES*8)-1:0] tlp_payload;
     logic [(FLIT_DLP_BYTES*8)-1:0]         dlp;
@@ -107,19 +104,19 @@ package pcie_phy_pkg;
   } flit_t;
 
  
-  // Gen6 reference profile (x4 link) - override per test as needed
-  parameter bit [7:0] SYM4_GEN6 = 8'h3F; //Data Rate Id: FLIT+2.5/5/8/16/32 GT/s advertised
-  parameter bit [7:0] SYM5_GEN6 = 8'h60; //Training Control: ELBC=11b, scrambling ON
-  parameter bit [7:0] NTFS_RC   = 8'h84; //RC's N_FTS (Symbol 3)
-  parameter bit [7:0] NTFS_EP   = 8'hC8; //EP's N_FTS (Symbol 3)
+  // Gen6 reference profile for x4 link
+  parameter bit [7:0] SYM4_GEN6 = 8'h3F; // Advertised data rates and FLIT mode
+  parameter bit [7:0] SYM5_GEN6 = 8'h60; // Training control settings
+  parameter bit [7:0] NTFS_RC   = 8'h84; // RC N_FTS
+  parameter bit [7:0] NTFS_EP   = 8'hC8; // EP N_FTS
  
   //-------------------------------------------------------
-  // Electrical Sub-block assumptions
+  // Electrical block assumptions
   //-------------------------------------------------------
-  parameter bit RX_DETECT_ASSUMED            = 1'b1; //Detect.Quiet->Detect.Active
-  parameter bit PLL_LOCK_ASSUMED              = 1'b1; //Recovery.Speed rate change completes
-  parameter bit ELECTRICAL_IDLE_EXIT_ASSUMED  = 1'b1; //driven off EIEOS, not voltage sensing
-  parameter bit EQ_DONE_ASSUMED               = 1'b1; //analog EQ tuning assumed successful
+  parameter bit RX_DETECT_ASSUMED            = 1'b1; // Detect.Quiet to Detect.Active
+  parameter bit PLL_LOCK_ASSUMED              = 1'b1; // Recovery.Speed rate change completes
+  parameter bit ELECTRICAL_IDLE_EXIT_ASSUMED  = 1'b1; // Based on EIEOS, not voltage sensing
+  parameter bit EQ_DONE_ASSUMED               = 1'b1; // Equalization is assumed successful
  
   
   //=========================================================================================
@@ -127,15 +124,15 @@ package pcie_phy_pkg;
   //=========================================================================================
  
   
-  //Enum: port_type_e
-  //Compact single-bit link-partner selector, used by RC/EP BFM tasks for pairwise checks
+  // Port type enum
+  // Selects the RC or EP side
   typedef enum logic {
     PORT_RC = 1'b0,
     PORT_EP = 1'b1
   } port_type_e;
  
-  //Enum: pcie_gen_e
-  //Negotiated/advertised link speed (data rate)
+  // PCIe generation enum
+  // Negotiated or advertised link speed
   typedef enum logic [2:0] {
     GEN1 = 3'd0, //2.5  GT/s
     GEN2 = 3'd1, //5.0  GT/s
@@ -145,22 +142,21 @@ package pcie_phy_pkg;
     GEN6 = 3'd5  //64.0 GT/s - FLIT Mode mandatory, PAM4 (electrical, out of scope)
   } pcie_gen_e;
  
-  //Type: speed_sequence_t / Parameter: SPEED_UPGRADE_SEQUENCE
-  //Fixed step order the LTSSM walks through Recovery to reach GEN6 from GEN1.
+  // Speed upgrade sequence
+  // Order used to move from GEN1 to GEN6
   typedef pcie_gen_e speed_sequence_t [0:5];
   parameter speed_sequence_t SPEED_UPGRADE_SEQUENCE = '{GEN1, GEN2, GEN3, GEN4, GEN5, GEN6};
 
-  //Parameter: FLIT_MODE_MANDATORY_FROM_GEN
-  //Referenced in comments near data_transfer_mode_e for a while but never actually defined
-  //until now. FLIT Mode is mandatory from GEN6 onward.
+  // Minimum generation for mandatory FLIT mode
+  // FLIT mode is mandatory from GEN6
   parameter pcie_gen_e FLIT_MODE_MANDATORY_FROM_GEN = GEN6;
 
-  //Parameter: EQ_REQUIRED_MIN_GEN
-  //Minimum speed at which link equalization becomes a real, required part of Recovery.
+  // Minimum generation that needs equalization
+  // Equalization is required from this generation
   parameter pcie_gen_e EQ_REQUIRED_MIN_GEN = GEN3;
  
-  //Enum: link_width_e
-  //Negotiated link width
+  // Link width enum
+  // Negotiated link width
   typedef enum logic [5:0] {
     X1  = 6'd1,
     X2  = 6'd2,
@@ -171,8 +167,8 @@ package pcie_phy_pkg;
     X32 = 6'd32
   } link_width_e;
  
-  //Enum: ltssm_state_e
-  //Top level LTSSM states
+  // LTSSM state enum
+  // Main LTSSM states
   typedef enum logic [3:0] {
     DETECT_ST    = 4'h0,
     POLLING_ST   = 4'h1,
@@ -187,23 +183,22 @@ package pcie_phy_pkg;
     L2_ST        = 4'hA
   } ltssm_state_e;
  
-  // one enum per LTSSM state that has sub-states (DISABLED/HOT_RESET/L0 don't,
-  // so they're skipped). All 3 bits wide to share the packed union below.
+  // Each LTSSM state with sub-states has its own enum
  
-  //Enum: detect_substate_e - sub-states of ltssm_state_e::DETECT_ST
+  // Detect state sub-states
   typedef enum logic [2:0] {
     DETECT_QUIET,
     DETECT_ACTIVE
   } detect_substate_e;
  
-  //Enum: polling_substate_e - sub-states of ltssm_state_e::POLLING_ST
+  // Polling state sub-states
   typedef enum logic [2:0] {
     POLLING_ACTIVE,
     POLLING_CONFIG,
     POLLING_COMPLIANCE
   } polling_substate_e;
  
-  //Enum: config_substate_e - sub-states of ltssm_state_e::CONFIG_ST
+  // Configuration state sub-states
   typedef enum logic [2:0] {
     CFG_LINKWIDTH_START,
     CFG_LINKWIDTH_ACCEPT,
@@ -213,9 +208,7 @@ package pcie_phy_pkg;
     CFG_IDLE
   } config_substate_e;
  
-  // Enum: recovery_substate_e - sub-states of RECOVERY_ST. RcvrLock/Speed/RcvrCfg/Idle
-  // repeat once per speed step up to Gen6. Equalization has 4 real phases (EC=01/01/10/11 -
-  // Phase 0 and 1 share the same wire value, split by behavior).
+  // Recovery state sub-states used for each speed step
   typedef enum logic [2:0] {
     RECOVERY_RCVR_LOCK,
     RECOVERY_RCVR_CFG,
@@ -227,14 +220,14 @@ package pcie_phy_pkg;
     RECOVERY_IDLE
   } recovery_substate_e;
  
-  //Enum: loopback_substate_e - sub-states of ltssm_state_e::LOOPBACK_ST
+  // Loopback state sub-states
   typedef enum logic [2:0] {
     LOOPBACK_ENTRY,
     LOOPBACK_ACTIVE,
     LOOPBACK_EXIT
   } loopback_substate_e;
  
-  //Enum: l0s_substate_e - sub-states of ltssm_state_e::L0s_ST
+  // L0s state sub-states
   typedef enum logic [2:0] {
     TX_L0S_ENTRY,
     TX_L0S_IDLE,
@@ -247,27 +240,27 @@ package pcie_phy_pkg;
   
  
  
-  //Enum: ltssm_next_action_e
-  //Exit/next-state decision returned by each run_* sub-state task
+  // Next LTSSM action enum
+  // Next state decision from each run_* task
   typedef enum logic [3:0] {
-    NEXT_NONE         = 4'd0, //advance to the next sub-state in normal sequence
+    NEXT_NONE         = 4'd0, // Move to the next sub-state
     NEXT_COMPLETE     = 4'd1,
     NEXT_LANENUM_WAIT = 4'd2,
-    NEXT_DETECT       = 4'd3, //timeout / link-down -> back to Detect
+    NEXT_DETECT       = 4'd3, // Timeout or link down -> Detect
     NEXT_L0           = 4'd4,
     NEXT_DISABLED     = 4'd5,
     NEXT_LOOPBACK     = 4'd6,
     NEXT_HOT_RESET    = 4'd7,
-    NEXT_RECOVERY     = 4'd8  //speed-change request, or any in-L0 trigger to retrain
+    NEXT_RECOVERY     = 4'd8  // Speed change or retrain request
   } ltssm_next_action_e;
  
-  //Enum: os_type_e
-  //Ordered-Sets exchanged during link init/training/speed-change
+  // Ordered set type enum
+  // Ordered sets used during link training and speed changes
   typedef enum logic [3:0] {
     OS_NONE,
     OS_TS1,
     OS_TS2,
-    OS_MODIFIED_TS,               //Modified TS1/TS2 format (once use_modified_ts1_ts2 latches)
+    OS_MODIFIED_TS,               // Modified TS1/TS2 format
     OS_SKIP,
     OS_EIOS,
     OS_EIEOS,
@@ -279,8 +272,8 @@ package pcie_phy_pkg;
   } os_type_e;
  
 
-  //Enum: eq_phase_e
-  //GEN3+ Transmitter Equalization phases performed during Recovery.Equalization
+  // Equalization phase enum
+  // Equalization phases for Gen3+
   typedef enum logic [1:0] {
     EQ_PHASE0,
     EQ_PHASE1,
@@ -289,7 +282,7 @@ package pcie_phy_pkg;
   } eq_phase_e;
  
     //Enum: pipe_rate_e
-  //Logical rate REQUEST value driven on the PIPE interface
+  // Logical rate request on PIPE
   typedef enum logic [3:0] {
     PIPE_RATE_GEN1 = 4'h0,
     PIPE_RATE_GEN2 = 4'h1,
@@ -299,8 +292,7 @@ package pcie_phy_pkg;
     PIPE_RATE_GEN6 = 4'h5
   } pipe_rate_e;
 
-  // Enum: bfm_verify_task_e - debug-only selector so a directed sequence can call
-  // any driver_bfm task directly, without needing real LTSSM stimulus
+  // Debug selector used to call driver BFM tasks directly
   typedef enum {
     VERIFY_SEND_TS1,                    //drive_ts(OS_TS1, ...)          - rc + ep
     VERIFY_SEND_TS2,                    //drive_ts(OS_TS2, ...)          - rc + ep
@@ -315,17 +307,15 @@ package pcie_phy_pkg;
     VERIFY_RUN_CONFIG_LANENUM_WAIT
 } bfm_verify_task_e;
 
-  //Struct: ltssm_status_t
-  //Compact BFM->observer status word: current shadow LTSSM state plus a link-up flag.
-  //Driven by driver_bfm/monitor_bfm as an output port for scoreboard/monitor visibility.
+  // LTSSM status structure
+  // BFM status with LTSSM state and link-up flag
   typedef struct packed {
     ltssm_state_e state;
     logic         link_up;
   } ltssm_status_t;
 
-  //Struct: pcie_phy_bfm_cfg_s
-  //BFM-side config struct used by rc_cfg_converter / ep_cfg_converter to pack
-  //agent_config fields (rate/lane capability) down to the pin-level driver_bfm.
+  // BFM configuration structure
+  // Config used to pass rate and lane settings to the driver BFM
   typedef struct packed {
     bit [6:0] supported_rates;
     bit       flit_mode_supported;
@@ -333,51 +323,48 @@ package pcie_phy_pkg;
   } pcie_phy_bfm_cfg_s;
  
   
-  //Enum: other_condition_e
-  //Miscellaneous per-lane link conditions tracked during training
+  // Other link conditions
+  // Link conditions tracked during training
   typedef enum logic [1:0] {
     LINK_UP,
     UP_CONFIGURE,
     WIDTH_CHANGE
   } other_condition_e;
  
-  //Enum: encoding_type_e
-  //Line-coding scheme in effect at the negotiated speed (informational - actual bit-level
-  //coding is Electrical/PCS scope, this just tags which framing rules apply)
+  // Encoding type enum
+  // Encoding used at the negotiated speed
   typedef enum logic [1:0] {
-    ENC_8B10B,    //GEN1-GEN2
-    ENC_128B130B, //GEN3-GEN5, NON_FLIT_MODE
-    ENC_FLIT      //FLIT_MODE (mandatory GEN6, optional GEN1-GEN5 if negotiated)
+    ENC_8B10B,    // Gen1 to Gen2
+    ENC_128B130B, // Gen3 to Gen5, non-FLIT mode
+    ENC_FLIT      // FLIT mode
   } encoding_type_e;
  
-  //Enum: data_transfer_mode_e
-  //Which framing scheme actual data transfer uses once L0 is reached.
-  //Always FLIT_MODE at GEN6 (see FLIT_MODE_MANDATORY_FROM_GEN); may be either at GEN1-GEN5.
+  // Data transfer mode enum
+  // Framing mode used for data transfer in L0
   typedef enum logic {
-    NON_FLIT_MODE = 1'b0, //Legacy STP/SDP/END/EDB framed TLPs/DLLPs
-    FLIT_MODE     = 1'b1  //Fixed 256B Flits (flit_t)
+    NON_FLIT_MODE = 1'b0, // Legacy framed TLPs/DLLPs
+    FLIT_MODE     = 1'b1  // Fixed 256B Flits
   } data_transfer_mode_e;
  
-  //Enum: flit_content_e
-  //What a Flit currently carries (FLIT_MODE only)
+  // Flit content enum
+  // Data carried by a Flit
   typedef enum logic [1:0] {
-    LOGICAL_IDLE_FLIT,  //No Upper Layer data available
-    DATA_FLIT,          //Carries TLP/DLLP content from the Upper Layer
-    SKP_ORDERED_SET     //Periodic Flit-mode SKP Ordered Set (clock compensation)
+    LOGICAL_IDLE_FLIT,  // No upper layer data
+    DATA_FLIT,          // Carries TLP/DLLP data
+    SKP_ORDERED_SET     // Periodic SKP ordered set
   } flit_content_e;
  
-  // ---- structs (all packed, so they cast directly to/from a bit-vector) ----
+  // Packed structures
  
-  //Struct: ts_ordered_set_t
-  //Decoded TS1/TS2 Ordered-Set fields used for Link Initialization/Training and
-  //speed-negotiation packet formation, common to RC and EP
+  // TS ordered set structure
+  // Decoded TS1/TS2 fields used by RC and EP
   typedef struct packed {
     os_type_e  os_type;
     logic [7:0] link_number;
     logic [7:0] lane_number;
     logic [7:0] n_fts;
     pcie_gen_e data_rate;
-    logic      speed_change;         //Symbol4 Bit7 - requests entry into Recovery.Speed
+    logic      speed_change;         // Symbol4 Bit7 - requests Recovery.Speed
     logic      autonomous_change;
     logic      disable_scrambling;
     logic      loopback;
@@ -385,14 +372,13 @@ package pcie_phy_pkg;
     logic      hot_reset;
     logic      select_deemphasis;
     logic      compliance_receive;
-    logic      flit_mode_supported;  //Symbol4 Bit0 - negotiates FLIT_MODE
+    logic      flit_mode_supported;  // Symbol4 Bit0 - FLIT mode support
     logic [3:0] tx_preset;
     logic [2:0] rx_preset_hint;
   } ts_ordered_set_t;
  
-  //Struct: ts_ordered_set_bytes_t
-  //Raw wire-level TS1/TS2 Ordered Set, symbol by symbol - used to build/compare the exact
-  //byte pattern driven/received on each lane (packed 2D array - all-packed, safe to embed)
+  // Raw TS1/TS2 ordered set structure
+  // TS1/TS2 symbols used to build and compare the transmitted data
   typedef struct packed {
     logic [7:0] sym0_com;
     logic [7:0] sym1_link_number;
@@ -400,55 +386,49 @@ package pcie_phy_pkg;
     logic [7:0] sym3_n_fts;
     logic [7:0] sym4_data_rate_id;
     logic [7:0] sym5_training_ctrl;
-    logic [9:0][7:0] sym6_15_identifier; //packed 10x8b: TS1_ID_BYTE x10 or TS2_ID_BYTE x10
+    logic [9:0][7:0] sym6_15_identifier; // 10 identifier bytes
   } ts_ordered_set_bytes_t;
  
-  // Struct: modified_ts_bytes_t - just the 7 real content bytes. Parity and the
-  // replica bytes are derived at drive time and checked at receive time, not stored here.
+  // Modified TS structure with the main 7 bytes
   typedef struct packed {
-    logic [7:0] id;           //byte0: MOD_TS1_ID or MOD_TS2_ID
-    logic [7:0] link_number;  //byte1
-    logic [7:0] lane_number;  //byte2
-    logic [7:0] n_fts;        //byte3
+    logic [7:0] id;           // byte0: Modified TS ID
+    logic [7:0] link_number;  // byte1: Link number
+    logic [7:0] lane_number;  // byte2: Lane number
+    logic [7:0] n_fts;        // byte3: N_FTS
     logic [7:0] data_rate_id; //byte4 - bit7 is still speed_change (SC), same position as
                                //the standard format
-    logic [7:0] ec_byte;      //byte5 - bits[7:6] = EC (EC_PHASE0_1/EC_PHASE2/EC_PHASE3/
-                               //EC_DONE); this REPLACES byte5's meaning from the standard
-                               //format (which carried ELBC/scramble/hot_reset etc there) -
-                               //Modified TS byte5 is EC only, not the same bit layout
-    logic [7:0] payload;      //byte6 - meaning depends on phase: EQ preset (Phase 0),
-                               //FS/LF info (Phase 1), coefficient request/status (Phase 2/3),
-                               //or Gen6 capabilities (post-EQ, EC=EC_DONE)
+    logic [7:0] ec_byte;      // byte5 - EC field for the Modified TS format
+    logic [7:0] payload;      // byte6 - data depends on the equalization phase
   } modified_ts_bytes_t;
  
-  //Struct: sym4_data_rate_t
-  //Bit-field breakdown of Symbol 4 (Data Rate Identifier)
+  // Symbol 4 structure
+  // Symbol 4 bit fields
   typedef struct packed {
-    logic speed_change;        //Bit7
+    logic speed_change;        // Bit7
     logic autonomous_change;   //Bit6
     logic speed_32gts;         //Bit5
-    logic speed_16gts;         //Bit4
+    logic speed_16gts;         // Bit4
     logic speed_8gts;          //Bit3
-    logic speed_5gts;          //Bit2
-    logic speed_2p5gts;        //Bit1
-    logic flit_mode_supported; //Bit0
+    logic speed_5gts;          // Bit2
+    logic speed_2p5gts;        // Bit1
+    logic flit_mode_supported; // Bit0
   } sym4_data_rate_t;
  
-  //Struct: sym5_training_ctrl_t
-  //Bit-field breakdown of Symbol 5 (Training Control)
+  // Symbol 5 structure
+  // Symbol 5 bit fields
   typedef struct packed {
     logic reserved_7;
-    logic elbc_hi;        //Bit6 - ELBC[1]
-    logic elbc_lo;        //Bit5 - ELBC[0]
-    logic no_scrambling;  //Bit4
+    logic elbc_hi;        // Bit6 - ELBC[1]
+    logic elbc_lo;        // Bit5 - ELBC[0]
+    logic no_scrambling;  // Bit4
     logic reserved_3;
-    logic loopback;       //Bit2
-    logic disable_link;   //Bit1
-    logic hot_reset;      //Bit0
+    logic loopback;       // Bit2
+    logic disable_link;   // Bit1
+    logic hot_reset;      // Bit0
   } sym5_training_ctrl_t;
  
-  //Struct: speed_cap_t
-  //Advertised speed/FLIT capability bits (from Symbol4 across TS1/TS2 exchange)
+  // Speed capability structure
+  // Speed and FLIT capability bits
   typedef struct packed {
     logic gen1_support;
     logic gen2_support;
@@ -459,8 +439,8 @@ package pcie_phy_pkg;
     logic flit_support;
   } speed_cap_t;
  
-  //Struct: speed_change_t
-  //Minimal speed-change handshake state for one Recovery pass
+  // Speed change structure
+  // Speed change state for one Recovery pass
   typedef struct packed {
     pcie_gen_e current_speed;
     pcie_gen_e target_speed;
@@ -472,11 +452,11 @@ package pcie_phy_pkg;
   typedef enum bit {
     RD_MINUS = 1'b0, //more 0s than 1s sent so far (or balanced) - next control/data symbol
                       //uses the RD- encoding
-    RD_PLUS  = 1'b1  //more 1s than 0s sent so far - next symbol uses the RD+ encoding
+    RD_PLUS  = 1'b1  // More 1s than 0s, so use RD+
   } running_disparity_e;
  
   //-------------------------------------------------------
-  // K-code (control character) encoded pairs - only these 8 symbols get a special-case
+  // K-code encoded pairs
   //-------------------------------------------------------
   parameter bit [9:0] K_COM_P = 10'b1100000101;
   parameter bit [9:0] K_COM_N = 10'b0011111010;
@@ -494,11 +474,11 @@ package pcie_phy_pkg;
   parameter bit [9:0] K_EDB_N = 10'b0111101000;
   parameter bit [9:0] K_EIE_P = 10'b1100000111;
   parameter bit [9:0] K_EIE_N = 10'b0011111000;
-  parameter bit [9:0] K_IDL_P = 10'b1100001100; //K28.3, standard table
+  parameter bit [9:0] K_IDL_P = 10'b1100001100; // K28.3
   parameter bit [9:0] K_IDL_N = 10'b0011110011;
  
-  // D-code lookup tables, indexed by byte value (0-255)
-  // D_NEG_DISP/D_POS_DISP = 10b encoding to use for RD_MINUS / RD_PLUS
+  // D-code lookup tables for byte values 0 to 255
+  // Encodings for RD_MINUS and RD_PLUS
   parameter bit [9:0] D_NEG_DISP [0:255] = '{
     10'b1001110100, 10'b0111010100, 10'b1011010100, 10'b1100011011, 10'b1101010100, 10'b1010011011, 10'b0110011011, 10'b1110001011,
     10'b1110010100, 10'b1001011011, 10'b0101011011, 10'b1101001011, 10'b0011011011, 10'b1011001011, 10'b0111001011, 10'b0101110100,
@@ -569,9 +549,7 @@ package pcie_phy_pkg;
     10'b0011001110, 10'b1001100001, 10'b0101100001, 10'b0010011110, 10'b0011100001, 10'b0100011110, 10'b1000011110, 10'b0101001110
   };
  
-  // Enum: pcie_phy_ltssm_task_e - the real dispatch selector (unlike
-  // bfm_verify_task_e above). One value maps to one driver_bfm task; the
-  // driver_proxy just calls it and copies the results back.
+  // LTSSM task selector used to call driver BFM tasks
   //-------------------------------------------------------
   typedef enum {
     LTSSM_TASK_DETECT_QUIET,
@@ -588,29 +566,13 @@ package pcie_phy_pkg;
     LTSSM_TASK_L0
   } pcie_phy_ltssm_task_e;
 
-  // test-level knob: set to 1 to request leaving Polling.Compliance, which has
-  // no exit condition of its own. run_polling_compliance() clears it once consumed.
+  // Set to 1 to leave Polling.Compliance
   bit exit_compliance_req;
 
-  // same pattern as exit_compliance_req - set to 1 to force L0 -> Recovery
-  // (directed retrain). run_l0() clears it once consumed.
+  // Set to 1 to force L0 to Recovery
   bit recovery_request;
 
-  // Cross-side barrier flags (one pair per Configuration substate + Polling.Config)
-  //
-  // Fixes a real race: each side used to tear down its own TX the instant its own
-  // exit condition was met, even if the partner was still receiving against the
-  // old content. Now each side sets its own flag, then waits for the partner's
-  // flag before tearing down - keeping both sides on matching content the whole time.
-  //
-  // Named per-substate rather than one shared counter, since retry loops (like
-  // Lanenum.Accept looping back to Wait) mean the two sides don't always take the
-  // same number of steps.
-  //
-  // Flags are set but never cleared after use - clearing them right after the wait
-  // unblocks had a real race where the other side could miss seeing the flag in
-  // time. Since these states aren't re-entered within one training run, leaving
-  // flags set is safe and removes the race.
+  // Flags used by RC and EP to wait for each other before changing states
   //-------------------------------------------------------
   bit rc_ready_polling_config;
   bit ep_ready_polling_config;
@@ -628,16 +590,14 @@ package pcie_phy_pkg;
   bit rc_ready_idle;
   bit ep_ready_idle;
 
-  // Enum: recovery_reason_e - published alongside next_state=RECOVERY_ST so
-  // callers know WHY Recovery was entered
+  // Reason for entering Recovery
   typedef enum {
     RECOVERY_REASON_NONE,
-    RECOVERY_REASON_SPEED_CHANGE,     //current_speed != target_link_speed
-    RECOVERY_REASON_DIRECTED,         //recovery_request flag set externally
-    RECOVERY_REASON_ERROR_THRESHOLD,  //too many consecutive receive errors in L0
-    RECOVERY_REASON_IDLE_TIMEOUT,     //no legitimate Idle seen from partner for too long
-    RECOVERY_REASON_PARTNER_INITIATED //saw a qualified real TS1 arrive while still in L0 -
-                                       //the partner already left L0 on its own, so we follow
+    RECOVERY_REASON_SPEED_CHANGE,     // Current speed is different from target speed
+    RECOVERY_REASON_DIRECTED,         // Directed recovery request
+    RECOVERY_REASON_ERROR_THRESHOLD,  // Too many receive errors in L0
+    RECOVERY_REASON_IDLE_TIMEOUT,     // Idle was not received for too long
+    RECOVERY_REASON_PARTNER_INITIATED // Partner sent TS1 while still in L0
   } recovery_reason_e;
 
 endpackage : pcie_phy_pkg
