@@ -74,7 +74,7 @@ class pcie_phy_rc_tx extends uvm_sequence_item;
   }
  
   constraint c_default_width {
-    requested_width == X4;
+    requested_width == X8;
   }
  
   constraint c_reversal_only_full_width {
