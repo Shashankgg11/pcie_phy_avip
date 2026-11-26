@@ -5,6 +5,7 @@
 // Class: pcie_phy_rc_driver_proxy
 // Driver proxy for the Root Complex (Downstream Port).
 // Gets pcie_phy_rc_tx items from the sequencer and sends them to the RC driver BFM.
+// Training + Recovery (RcvrLock/RcvrCfg/Speed/EQ Phase0-3/Idle) task dispatch.
 //--------------------------------------------------------------------------------------------
 class pcie_phy_rc_driver_proxy extends uvm_driver #(pcie_phy_rc_tx);
   `uvm_component_utils(pcie_phy_rc_driver_proxy)
@@ -18,6 +19,11 @@ class pcie_phy_rc_driver_proxy extends uvm_driver #(pcie_phy_rc_tx);
   //Variable: req
   pcie_phy_rc_tx req;
 
+  //Variable: l0_running
+  // 1 while run_l0() is alive in the background. A Recovery task is only started once
+  // run_l0() has returned (it returns when it decides to leave L0).
+  bit l0_running;
+
   //-------------------------------------------------------
   // External Tasks and Functions
   //-------------------------------------------------------
@@ -25,6 +31,7 @@ class pcie_phy_rc_driver_proxy extends uvm_driver #(pcie_phy_rc_tx);
   extern virtual function void build_phase(uvm_phase phase);
   extern virtual function void connect_phase(uvm_phase phase);
   extern virtual task run_phase(uvm_phase phase);
+  extern virtual task wait_l0_exit();
 
 endclass : pcie_phy_rc_driver_proxy
 
@@ -44,6 +51,19 @@ function void pcie_phy_rc_driver_proxy::connect_phase(uvm_phase phase);
   super.connect_phase(phase);
 endfunction : connect_phase
 
+//--------------------------------------------------------------------------------------------
+// Task: wait_l0_exit
+// Blocks until run_l0() has returned, so Recovery starts from a clean TX/RX.
+//--------------------------------------------------------------------------------------------
+task pcie_phy_rc_driver_proxy::wait_l0_exit();
+  if (l0_running) begin
+    `uvm_info(get_type_name(), "Recovery requested - waiting for run_l0() to exit", UVM_MEDIUM)
+    wait (l0_running == 1'b0);
+    `uvm_info(get_type_name(),
+              $sformatf("run_l0() exited, reason=%s", pcie_phy_rc_drv_bfm_h.next_recovery_reason.name()),
+              UVM_MEDIUM)
+  end
+endtask : wait_l0_exit
 
 task pcie_phy_rc_driver_proxy::run_phase(uvm_phase phase);
 
@@ -129,22 +149,71 @@ task pcie_phy_rc_driver_proxy::run_phase(uvm_phase phase);
         LTSSM_TASK_L0: begin
           //run_l0() keeps running during normal operation and only returns when
           //a condition causes Recovery. Reaching L0 means the training is complete.
-          //The BFM next_state is set so the value is copied back correctly.
+          //l0_running is set here (before the fork) so a Recovery item can never
+          //race ahead of it.
+          l0_running = 1'b1;
           fork
-            pcie_phy_rc_drv_bfm_h.run_l0();
+            begin
+              pcie_phy_rc_drv_bfm_h.run_l0();
+              l0_running = 1'b0;
+            end
           join_none
           pcie_phy_rc_drv_bfm_h.next_state = L0_ST;
+        end
+
+        //---------------------------------------------------------------
+        // Recovery (PCIe 6.0 spec 4.2.7.4) - each task leaves the next state in
+        // next_state / next_recovery_substate
+        //---------------------------------------------------------------
+        LTSSM_TASK_RECOVERY_RCVR_LOCK: begin
+          wait_l0_exit();
+          pcie_phy_rc_drv_bfm_h.run_recovery_rcvr_lock();
+        end
+
+        LTSSM_TASK_RECOVERY_RCVR_CFG: begin
+          wait_l0_exit();
+          pcie_phy_rc_drv_bfm_h.run_recovery_rcvr_cfg();
+        end
+
+        LTSSM_TASK_RECOVERY_SPEED: begin
+          wait_l0_exit();
+          pcie_phy_rc_drv_bfm_h.run_recovery_speed();
+        end
+
+        LTSSM_TASK_RECOVERY_EQ_PHASE0: begin
+          wait_l0_exit();
+          pcie_phy_rc_drv_bfm_h.run_recovery_eq_phase0();
+        end
+
+        LTSSM_TASK_RECOVERY_EQ_PHASE1: begin
+          wait_l0_exit();
+          pcie_phy_rc_drv_bfm_h.run_recovery_eq_phase1();
+        end
+
+        LTSSM_TASK_RECOVERY_EQ_PHASE2: begin
+          wait_l0_exit();
+          pcie_phy_rc_drv_bfm_h.run_recovery_eq_phase2();
+        end
+
+        LTSSM_TASK_RECOVERY_EQ_PHASE3: begin
+          wait_l0_exit();
+          pcie_phy_rc_drv_bfm_h.run_recovery_eq_phase3();
+        end
+
+        LTSSM_TASK_RECOVERY_IDLE: begin
+          wait_l0_exit();
+          pcie_phy_rc_drv_bfm_h.run_recovery_idle();
         end
 
         default:
           `uvm_fatal(get_type_name(), $sformatf("Unhandled task_id %s", req.task_id.name()))
       endcase
 
-      
-      req.rsp_state             = pcie_phy_rc_drv_bfm_h.next_state;
-      req.rsp_detect_substate   = pcie_phy_rc_drv_bfm_h.next_detect_substate;
-      req.rsp_polling_substate  = pcie_phy_rc_drv_bfm_h.next_polling_substate;
-      req.rsp_config_substate   = pcie_phy_rc_drv_bfm_h.next_config_substate;
+      req.rsp_state              = pcie_phy_rc_drv_bfm_h.next_state;
+      req.rsp_detect_substate    = pcie_phy_rc_drv_bfm_h.next_detect_substate;
+      req.rsp_polling_substate   = pcie_phy_rc_drv_bfm_h.next_polling_substate;
+      req.rsp_config_substate    = pcie_phy_rc_drv_bfm_h.next_config_substate;
+      req.rsp_recovery_substate  = pcie_phy_rc_drv_bfm_h.next_recovery_substate;
 
     end
 

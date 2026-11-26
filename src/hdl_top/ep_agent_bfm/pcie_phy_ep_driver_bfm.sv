@@ -45,6 +45,12 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
   pcie_gen_e current_rate;
   bit        changed_speed_recovery;
   bit        successful_speed_negotiation;
+
+  // Recovery state (mirrors RC driver BFM)
+  bit                  equalization_done_this_speed;
+  bit [7:0]            negotiated_tx_preset;
+  recovery_substate_e  current_recovery_substate;
+  bit                  rcvrlock_saw_link_lane_match;
   bit [7:0]    configured_link_number;
   bit [7:0]    configured_lane_number [0:PCIE_MAX_LANES-1];
   int unsigned ts1_tx_count;
@@ -93,6 +99,10 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     idle_tx_count            = 0;
     symbol_lock_acquired     = 1'b0;
     consec_invalid_rx_count  = 0;
+    equalization_done_this_speed = 1'b0;
+    negotiated_tx_preset         = 8'h00;
+    current_recovery_substate    = RECOVERY_RCVR_LOCK;
+    rcvrlock_saw_link_lane_match = 1'b0;
     ep_ready_polling_config   = 1'b0;
     ep_ready_linkwidth_start  = 1'b0;
     ep_ready_linkwidth_accept = 1'b0;
@@ -1335,12 +1345,146 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     rx_lane_disparity[0] = next_running_disparity(code, rx_lane_disparity[0]);
   endtask : sample_one_symbol
 
-  // same 4 exit conditions as RC's run_l0(), same simplified scope, just using
-  // EP's output-argument convention
+  // ---- drive_symbol_stream / drive_skp (from RC BFM) ----
+  task automatic drive_symbol_stream(input bit [7:0] byte_stream [], input bit is_k_stream []);
+    for (int s = 0; s < byte_stream.size(); s++) begin
+      bit [9:0] encoded [0:PCIE_MAX_LANES-1];
+
+      for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++) begin
+        encoded[l] = encode_8b10b_symbol(byte_stream[s], is_k_stream[s], lane_disparity[l]);
+        lane_disparity[l] = next_running_disparity(encoded[l], lane_disparity[l]);
+      end
+
+      for (int b = 0; b < 10; b++) begin
+        logic [PCIE_MAX_LANES-1:0] tx_p_bits, tx_n_bits;
+        @(epCb);
+        tx_p_bits = '0;
+        tx_n_bits = '0;
+        for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++) begin
+          if (encoded[l][b]) begin
+            tx_p_bits[l] = 1'b1;
+            tx_n_bits[l] = 1'b0;
+          end
+          else begin
+            tx_p_bits[l] = 1'b0;
+            tx_n_bits[l] = 1'b1;
+          end
+        end
+        epCb.TX_P <= tx_p_bits;
+        epCb.TX_N <= tx_n_bits;
+      end
+    end
+  endtask : drive_symbol_stream
+
+  task automatic drive_skp();
+    bit [7:0] stream [];
+    bit       is_k   [];
+    stream = new[4];
+    is_k   = new[4];
+    stream[0] = COM_SYMBOL; is_k[0] = 1'b1;
+    stream[1] = SKP_SYMBOL; is_k[1] = 1'b1;
+    stream[2] = SKP_SYMBOL; is_k[2] = 1'b1;
+    stream[3] = SKP_SYMBOL; is_k[3] = 1'b1;
+    drive_symbol_stream(stream, is_k);
+  endtask : drive_skp
+
+  // ---- Modified TS1/TS2 (Gen3+) ----
+  task automatic drive_modified_ts(input modified_ts_bytes_t content);
+    bit [7:0] stream [];
+    bit       is_k   [];
+    bit [7:0] parity;
+
+    stream = new[16];
+    is_k   = new[16];
+
+    stream[0] = content.id;           is_k[0] = 1'b0;
+    stream[1] = content.link_number;  is_k[1] = 1'b0;
+    stream[2] = content.lane_number;  is_k[2] = 1'b0;
+    stream[3] = content.n_fts;        is_k[3] = 1'b0;
+    stream[4] = content.data_rate_id; is_k[4] = 1'b0;
+    stream[5] = content.ec_byte;      is_k[5] = 1'b0;
+    stream[6] = content.payload;      is_k[6] = 1'b0;
+
+    parity = stream[0] ^ stream[1] ^ stream[2] ^ stream[3] ^
+             stream[4] ^ stream[5] ^ stream[6];
+    stream[7] = parity; is_k[7] = 1'b0;
+
+    for (int i = 0; i < 7; i++) begin
+      stream[8+i] = stream[i]; 
+      is_k[8+i]   = 1'b0;
+    end
+    stream[15] = parity; is_k[15] = 1'b0;
+
+    drive_symbol_stream(stream, is_k);
+  endtask : drive_modified_ts
+
+  // -----------------------------------------------------------------------
+  // Task: receive_modified_ts
+  // -----------------------------------------------------------------------
+  task automatic receive_modified_ts(output modified_ts_bytes_t content, output bit valid);
+    bit [7:0] rx_byte [0:15];
+    bit       rx_ok   [0:15];
+    bit [7:0] computed_parity_primary;
+    bit [7:0] computed_parity_replica;
+    bit       replica_match;
+
+    valid = 1'b1;
+
+    for (int s = 0; s < 16; s++) begin
+      bit [9:0] rx_encoded;
+      bit       decoded_is_k;
+
+      for (int b = 0; b < 10; b++) begin
+        @(epCb);
+        rx_encoded[b] = epCb.RX_P[0];
+      end
+
+      decode_8b10b_symbol(rx_encoded, rx_lane_disparity[0], rx_byte[s], decoded_is_k, rx_ok[s]);
+      rx_lane_disparity[0] = next_running_disparity(rx_encoded, rx_lane_disparity[0]);
+
+      if (!rx_ok[s] || decoded_is_k) valid = 1'b0;
+    end
+
+    content.id           = rx_byte[0];
+    content.link_number  = rx_byte[1];
+    content.lane_number  = rx_byte[2];
+    content.n_fts         = rx_byte[3];
+    content.data_rate_id = rx_byte[4];
+    content.ec_byte       = rx_byte[5];
+    content.payload       = rx_byte[6];
+
+    computed_parity_primary = rx_byte[0] ^ rx_byte[1] ^ rx_byte[2] ^ rx_byte[3] ^
+                               rx_byte[4] ^ rx_byte[5] ^ rx_byte[6];
+    if (computed_parity_primary != rx_byte[7]) valid = 1'b0;
+
+    replica_match = 1'b1;
+    for (int i = 0; i < 7; i++)
+      if (rx_byte[8+i] != rx_byte[i]) replica_match = 1'b0;
+    if (!replica_match) valid = 1'b0;
+
+    computed_parity_replica = rx_byte[8] ^ rx_byte[9] ^ rx_byte[10] ^ rx_byte[11] ^
+                               rx_byte[12] ^ rx_byte[13] ^ rx_byte[14];
+    if (computed_parity_replica != rx_byte[15]) valid = 1'b0;
+  endtask : receive_modified_ts
+
+  //-------------------------------------------------------
+  // Task: run_l0 - mirrors RC's run_l0(), with EP's output-argument convention.
+  // Transmits Idle + periodic SKP so the partner sees a healthy link, and leaves L0 on:
+  //   - CONSEC_TS_REQUIRED TS1 windows from the partner (partner already in Recovery)
+  //   - directed recovery_request
+  //   - speed change needed
+  //   - 8 consecutive RX errors
+  //   - no valid symbol for 10 ms
+  //-------------------------------------------------------
   task automatic run_l0(output ltssm_state_e next_state, output recovery_reason_e next_recovery_reason_out);
     int unsigned consec_rx_errors;
+    int unsigned skp_send_counter;
     realtime     last_legit_rx_time;
+    int unsigned ts_candidate_symbol_pos;
+    bit          ts_candidate_is_ts1;
+    int unsigned consec_recovery_ts1_cnt;
 
+    localparam int unsigned SKP_INTERVAL_SYMBOLS  = 128;
     localparam int unsigned MAX_CONSEC_RX_ERRORS  = 8;
     localparam realtime     L0_IDLE_RX_TIMEOUT    = 10ms;
 
@@ -1354,8 +1498,25 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
     transfer_mode = (current_speed >= FLIT_MODE_MANDATORY_FROM_GEN)
                     ? FLIT_MODE : ep_agent_cfg_h.preferred_transfer_mode;
 
-    consec_rx_errors   = 0;
-    last_legit_rx_time = $realtime;
+    consec_rx_errors         = 0;
+    skp_send_counter         = 0;
+    last_legit_rx_time       = $realtime;
+    ts_candidate_symbol_pos  = 0;
+    ts_candidate_is_ts1      = 1'b0;
+    consec_recovery_ts1_cnt  = 0;
+
+    fork
+      forever begin
+        skp_send_counter++;
+        if (skp_send_counter >= SKP_INTERVAL_SYMBOLS) begin
+          drive_skp();
+          skp_send_counter = 0;
+        end
+        else begin
+          drive_idle();
+        end
+      end
+    join_none
 
     forever begin
       bit [7:0] rx_byte;
@@ -1372,10 +1533,43 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
         consec_rx_errors++;
       end
 
+      // Partner-initiated Recovery: look for back-to-back TS1 ordered sets
+      if (ts_candidate_symbol_pos == 0) begin
+        if (rx_valid && rx_is_k && rx_byte == COM_SYMBOL) begin
+          ts_candidate_symbol_pos = 1;
+          ts_candidate_is_ts1     = 1'b1;
+        end
+      end
+      else if (ts_candidate_symbol_pos == 1 && rx_valid && rx_is_k && rx_byte == SKP_SYMBOL) begin
+        ts_candidate_symbol_pos = 0;   // COM+SKP is a SKP ordered set, not a TS
+      end
+      else begin
+        if (ts_candidate_symbol_pos >= 6 && ts_candidate_symbol_pos <= 15) begin
+          if (!(rx_valid && !rx_is_k && rx_byte == TS1_ID_BYTE)) ts_candidate_is_ts1 = 1'b0;
+        end
+
+        ts_candidate_symbol_pos++;
+
+        if (ts_candidate_symbol_pos > 15) begin
+          consec_recovery_ts1_cnt = ts_candidate_is_ts1 ? consec_recovery_ts1_cnt + 1 : 0;
+          ts_candidate_symbol_pos = 0;
+
+          if (consec_recovery_ts1_cnt >= CONSEC_TS_REQUIRED) begin
+            `uvm_info(name, $sformatf("L0: %0d consecutive TS1 windows observed - partner left L0, following into Recovery",
+                                       consec_recovery_ts1_cnt), UVM_LOW)
+            disable fork;
+            next_state               = RECOVERY_ST;
+            next_recovery_reason_out = RECOVERY_REASON_PARTNER_INITIATED;
+            return;
+          end
+        end
+      end
+
       if (recovery_request) begin
         `uvm_info(name, "L0: directed Recovery request", UVM_LOW)
         recovery_request = 1'b0;
-        next_state             = RECOVERY_ST;
+        disable fork;
+        next_state               = RECOVERY_ST;
         next_recovery_reason_out = RECOVERY_REASON_DIRECTED;
         return;
       end
@@ -1385,27 +1579,679 @@ interface pcie_phy_ep_driver_bfm(input  logic pclk,
         `uvm_info(name, $sformatf("L0: directed_speed_change asserted (%s -> %s) - exiting L0 instantaneously",
                                    current_speed.name(),
                                    ep_agent_cfg_h.target_link_speed.name()), UVM_LOW)
-        next_state             = RECOVERY_ST;
+        disable fork;
+        next_state               = RECOVERY_ST;
         next_recovery_reason_out = RECOVERY_REASON_SPEED_CHANGE;
         return;
       end
 
       if (consec_rx_errors >= MAX_CONSEC_RX_ERRORS) begin
-        `uvm_warning(name, $sformatf("L0: %0d consecutive receive errors - entering Recovery",
-                                      consec_rx_errors))
-        next_state             = RECOVERY_ST;
+        `uvm_warning(name, $sformatf("L0: %0d consecutive receive errors - entering Recovery", consec_rx_errors))
+        disable fork;
+        next_state               = RECOVERY_ST;
         next_recovery_reason_out = RECOVERY_REASON_ERROR_THRESHOLD;
         return;
       end
 
       if (($realtime - last_legit_rx_time) >= L0_IDLE_RX_TIMEOUT) begin
         `uvm_warning(name, "L0: no valid symbol received for too long - entering Recovery")
-        next_state             = RECOVERY_ST;
+        disable fork;
+        next_state               = RECOVERY_ST;
         next_recovery_reason_out = RECOVERY_REASON_IDLE_TIMEOUT;
         return;
       end
     end
   endtask : run_l0
+
+  //-------------------------------------------------------
+  //    RECOVERY (PCIe 6.0 spec 4.2.7.4, mirrors RC driver BFM)
+  //-------------------------------------------------------
+
+  //-------------------------------------------------------
+  // Recovery timeout exits (PCIe 6.0 spec 4.2.7.4.1 / 4.2.7.4.4)
+  //-------------------------------------------------------
+  localparam int unsigned RCVRCFG_TIMEOUT_MS = 48;
+
+  // RcvrLock after 24 ms: Speed if speed already changed in this Recovery or above 2.5 GT/s;
+  // Configuration if TS with matching Link/Lane seen and no speed change pending; else Detect.
+  function automatic void rcvrlock_timeout_exit(output ltssm_state_e next_state,
+                                                 output recovery_substate_e next_recovery_substate);
+    next_recovery_substate = RECOVERY_RCVR_LOCK;
+    if (changed_speed_recovery || (current_speed > GEN1)) begin
+      next_state             = RECOVERY_ST;
+      next_recovery_substate = RECOVERY_SPEED;
+    end
+    else if (rcvrlock_saw_link_lane_match && !directed_speed_change) begin
+      next_state = CONFIG_ST;
+    end
+    else begin
+      next_state = DETECT_ST;
+    end
+  endfunction : rcvrlock_timeout_exit
+
+  // RcvrCfg after 48 ms: Idle at 8 GT/s and above, Detect at 2.5/5.0 GT/s
+  function automatic void rcvrcfg_timeout_exit(output ltssm_state_e next_state,
+                                                output recovery_substate_e next_recovery_substate);
+    next_recovery_substate = RECOVERY_RCVR_CFG;
+    if (current_speed >= EQ_REQUIRED_MIN_GEN) begin
+      next_state             = RECOVERY_ST;
+      next_recovery_substate = RECOVERY_IDLE;
+    end
+    else begin
+      next_state = DETECT_ST;
+    end
+  endfunction : rcvrcfg_timeout_exit
+
+  // -----------------------------------------------------------------------
+  // Task: run_recovery_rcvr_lock
+  // -----------------------------------------------------------------------
+  task automatic run_recovery_rcvr_lock(output ltssm_state_e     next_state,
+                                         output recovery_substate_e next_recovery_substate);
+    ts_ordered_set_bytes_t rx_bytes;
+    bit [7:0]               rx_lane_number [0:PCIE_MAX_LANES-1];
+    bit                     rx_valid;
+    int unsigned            consec_rx_match_cnt;
+    time                    start_time;
+    bit                     lane_match;
+    modified_ts_bytes_t     mod_tx_content;
+    modified_ts_bytes_t     mod_rx_content;
+    bit                     mod_rx_valid;
+
+    current_recovery_substate = RECOVERY_RCVR_LOCK;
+    `uvm_info(name, $sformatf("EP: Entering Recovery.RcvrLock at %s, speed_change=%0d",
+                               current_speed.name(), directed_speed_change), UVM_MEDIUM)
+
+    consec_rx_match_cnt = 0;
+    start_time          = $time;
+    rcvrlock_saw_link_lane_match = 1'b0;
+
+    if (current_speed >= EQ_REQUIRED_MIN_GEN) begin
+      mod_tx_content.id           = MOD_TS1_ID;
+      mod_tx_content.link_number  = configured_link_number;
+      mod_tx_content.lane_number  = PAD_SYMBOL;
+      mod_tx_content.n_fts         = ep_agent_cfg_h.ntfs;
+      mod_tx_content.data_rate_id = {directed_speed_change, 7'h3F};
+      mod_tx_content.ec_byte       = EC_DONE;
+      mod_tx_content.payload       = 8'h01;
+
+      fork
+        forever drive_modified_ts(mod_tx_content);
+      join_none
+
+      forever begin
+        receive_modified_ts(mod_rx_content, mod_rx_valid);
+
+        lane_match = (mod_rx_content.lane_number == configured_lane_number[0]);
+        if (mod_rx_valid && mod_rx_content.link_number == configured_link_number && lane_match)
+          rcvrlock_saw_link_lane_match = 1'b1;
+
+        if (mod_rx_valid &&
+            (mod_rx_content.id == MOD_TS1_ID || mod_rx_content.id == MOD_TS2_ID) &&
+            mod_rx_content.data_rate_id[7] == directed_speed_change &&
+            mod_rx_content.link_number == configured_link_number &&
+            lane_match) begin
+          consec_rx_match_cnt++;
+        end
+        else begin
+          consec_rx_match_cnt = 0;
+        end
+
+        if (consec_rx_match_cnt >= CONSEC_TS_COUNT) begin
+          `uvm_info(name, "EP: Recovery.RcvrLock (Modified TS) complete -> RcvrCfg", UVM_HIGH)
+          disable fork;
+          next_state             = RECOVERY_ST;
+          next_recovery_substate = RECOVERY_RCVR_CFG;
+          return;
+        end
+
+        if (($time - start_time) >= (RECOVERY_TIMEOUT_MS * 1ms)) begin
+          `uvm_warning(name, "EP: Recovery.RcvrLock 24 ms timeout - exit per spec");
+          disable fork;
+          rcvrlock_timeout_exit(next_state, next_recovery_substate);
+          return;
+        end
+      end
+    end
+    else begin
+      fork
+        forever drive_ts(OS_TS1, configured_link_number, PAD_SYMBOL,
+                          directed_speed_change,
+                          ep_agent_cfg_h.default_autonomous_change, ep_agent_cfg_h.default_elbc,
+                          ep_agent_cfg_h.default_no_scrambling, ep_agent_cfg_h.default_loopback,
+                          ep_agent_cfg_h.default_disable_link, ep_agent_cfg_h.default_hot_reset,
+                          1'b1);
+      join_none
+
+      forever begin
+        receive_ts(rx_bytes, rx_lane_number, rx_valid);
+
+        lane_match = 1'b1;
+        for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++)
+          if (rx_lane_number[l] != configured_lane_number[l]) lane_match = 1'b0;
+
+        if (rx_valid && rx_bytes.sym1_link_number == configured_link_number && lane_match)
+          rcvrlock_saw_link_lane_match = 1'b1;
+
+        if (rx_valid &&
+            (rx_bytes.sym6_15_identifier[0] == TS1_ID_BYTE ||
+             rx_bytes.sym6_15_identifier[0] == TS2_ID_BYTE) &&
+            rx_bytes.sym4_data_rate_id[7] == directed_speed_change &&
+            rx_bytes.sym1_link_number == configured_link_number &&
+            lane_match) begin
+          consec_rx_match_cnt++;
+        end
+        else begin
+          consec_rx_match_cnt = 0;
+        end
+
+        if (consec_rx_match_cnt >= CONSEC_TS_COUNT) begin
+          `uvm_info(name, "EP: Recovery.RcvrLock complete -> RcvrCfg", UVM_HIGH)
+          disable fork;
+          next_state             = RECOVERY_ST;
+          next_recovery_substate = RECOVERY_RCVR_CFG;
+          return;
+        end
+
+        if (($time - start_time) >= (RECOVERY_TIMEOUT_MS * 1ms)) begin
+          `uvm_warning(name, "EP: Recovery.RcvrLock 24 ms timeout - exit per spec");
+          disable fork;
+          rcvrlock_timeout_exit(next_state, next_recovery_substate);
+          return;
+        end
+      end
+    end
+  endtask : run_recovery_rcvr_lock
+
+  // -----------------------------------------------------------------------
+  // Task: run_recovery_rcvr_cfg
+  // -----------------------------------------------------------------------
+  task automatic run_recovery_rcvr_cfg(output ltssm_state_e      next_state,
+                                        output recovery_substate_e next_recovery_substate);
+    ts_ordered_set_bytes_t rx_bytes;
+    bit [7:0]               rx_lane_number [0:PCIE_MAX_LANES-1];
+    bit                     rx_valid;
+    int unsigned            consec_ts2_cnt;
+    time                    start_time;
+    bit                     need_another_speed_step;
+    bit                     lane_match;
+    modified_ts_bytes_t     mod_tx_content;
+    modified_ts_bytes_t     mod_rx_content;
+    bit                     mod_rx_valid;
+
+    current_recovery_substate = RECOVERY_RCVR_CFG;
+    `uvm_info(name, $sformatf("EP: Entering Recovery.RcvrCfg at %s, speed_change=%0d",
+                               current_speed.name(), directed_speed_change), UVM_MEDIUM)
+
+    consec_ts2_cnt = 0;
+    start_time     = $time;
+
+    if (current_speed >= EQ_REQUIRED_MIN_GEN) begin
+      mod_tx_content.id           = MOD_TS2_ID;
+      mod_tx_content.link_number  = configured_link_number;
+      mod_tx_content.lane_number  = PAD_SYMBOL;
+      mod_tx_content.n_fts         = ep_agent_cfg_h.ntfs;
+      mod_tx_content.data_rate_id = {directed_speed_change, 7'h3F};
+      mod_tx_content.ec_byte       = EC_DONE;
+      mod_tx_content.payload       = 8'h01;
+
+      fork
+        forever drive_modified_ts(mod_tx_content);
+      join_none
+
+      forever begin
+        receive_modified_ts(mod_rx_content, mod_rx_valid);
+        lane_match = (mod_rx_content.lane_number == configured_lane_number[0]);
+
+        if (mod_rx_valid && mod_rx_content.id == MOD_TS2_ID &&
+            mod_rx_content.data_rate_id[7] == directed_speed_change &&
+            mod_rx_content.link_number == configured_link_number &&
+            lane_match) begin
+          consec_ts2_cnt++;
+        end
+        else begin
+          consec_ts2_cnt = 0;
+        end
+
+        if (consec_ts2_cnt >= CONSEC_TS_COUNT) begin
+          disable fork;
+          need_another_speed_step = (current_speed != ep_agent_cfg_h.target_link_speed);
+          if (need_another_speed_step) begin
+            `uvm_info(name, "EP: Recovery.RcvrCfg (Modified TS) -> Speed", UVM_HIGH)
+            next_recovery_substate = RECOVERY_SPEED;
+          end
+          else begin
+            `uvm_info(name, "EP: Recovery.RcvrCfg (Modified TS) -> Idle", UVM_HIGH)
+            next_recovery_substate = RECOVERY_IDLE;
+          end
+          next_state = RECOVERY_ST;
+          return;
+        end
+
+        if (($time - start_time) >= (RCVRCFG_TIMEOUT_MS * 1ms)) begin
+          `uvm_warning(name, "EP: Recovery.RcvrCfg 48 ms timeout - exit per spec");
+          disable fork;
+          rcvrcfg_timeout_exit(next_state, next_recovery_substate);
+          return;
+        end
+      end
+    end
+    else begin
+      fork
+        forever drive_ts(OS_TS2, configured_link_number, PAD_SYMBOL,
+                          directed_speed_change,
+                          ep_agent_cfg_h.default_autonomous_change, ep_agent_cfg_h.default_elbc,
+                          ep_agent_cfg_h.default_no_scrambling, ep_agent_cfg_h.default_loopback,
+                          ep_agent_cfg_h.default_disable_link, ep_agent_cfg_h.default_hot_reset,
+                          1'b1);
+      join_none
+
+      forever begin
+        receive_ts(rx_bytes, rx_lane_number, rx_valid);
+
+        lane_match = 1'b1;
+        for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++)
+          if (rx_lane_number[l] != configured_lane_number[l]) lane_match = 1'b0;
+
+        if (rx_valid && rx_bytes.sym6_15_identifier[0] == TS2_ID_BYTE &&
+            rx_bytes.sym4_data_rate_id[7] == directed_speed_change &&
+            rx_bytes.sym1_link_number == configured_link_number &&
+            lane_match) begin
+          consec_ts2_cnt++;
+        end
+        else begin
+          consec_ts2_cnt = 0;
+        end
+
+        if (consec_ts2_cnt >= CONSEC_TS_COUNT) begin
+          disable fork;
+          // Spec 4.2.7.4.4: keep sending TS2 after receiving 8, so the partner (which may
+          // have started RcvrCfg later) also sees 8 consecutive TS2
+          repeat (16)
+            drive_ts(OS_TS2, configured_link_number, PAD_SYMBOL,
+                     directed_speed_change,
+                     ep_agent_cfg_h.default_autonomous_change, ep_agent_cfg_h.default_elbc,
+                     ep_agent_cfg_h.default_no_scrambling, ep_agent_cfg_h.default_loopback,
+                     ep_agent_cfg_h.default_disable_link, ep_agent_cfg_h.default_hot_reset,
+                     1'b1);
+          need_another_speed_step = (current_speed != ep_agent_cfg_h.target_link_speed);
+
+          if (need_another_speed_step) begin
+            `uvm_info(name, "EP: Recovery.RcvrCfg -> Speed", UVM_HIGH)
+            next_state             = RECOVERY_ST;
+            next_recovery_substate = RECOVERY_SPEED;
+          end
+          else if (current_speed >= EQ_REQUIRED_MIN_GEN && !equalization_done_this_speed) begin
+            `uvm_info(name, "EP: Recovery.RcvrCfg -> EQ Phase 0", UVM_HIGH)
+            next_state             = RECOVERY_ST;
+            next_recovery_substate = RECOVERY_EQ_PHASE0;
+          end
+          else begin
+            `uvm_info(name, "EP: Recovery.RcvrCfg -> Idle", UVM_HIGH)
+            next_state             = RECOVERY_ST;
+            next_recovery_substate = RECOVERY_IDLE;
+          end
+          return;
+        end
+
+        if (($time - start_time) >= (RCVRCFG_TIMEOUT_MS * 1ms)) begin
+          `uvm_warning(name, "EP: Recovery.RcvrCfg 48 ms timeout - exit per spec");
+          disable fork;
+          rcvrcfg_timeout_exit(next_state, next_recovery_substate);
+          return;
+        end
+      end
+    end
+  endtask : run_recovery_rcvr_cfg
+
+  // -----------------------------------------------------------------------
+  // Task: run_recovery_speed
+  // -----------------------------------------------------------------------
+  task automatic run_recovery_speed(output ltssm_state_e      next_state,
+                                     output recovery_substate_e next_recovery_substate);
+    int unsigned seq_idx;
+    bit          found_idx;
+
+    current_recovery_substate = RECOVERY_SPEED;
+    `uvm_info(name, $sformatf("EP: Entering Recovery.Speed (%s -> next)", current_speed.name()), UVM_MEDIUM)
+
+    if (!PLL_LOCK_ASSUMED) begin
+      `uvm_error(name, "EP: PLL_LOCK_ASSUMED=0 - no analog PHY rate-switch model exists")
+      next_state             = DETECT_ST;
+      next_recovery_substate = RECOVERY_SPEED;
+      return;
+    end
+
+    found_idx = 1'b0;
+    for (int i = 0; i < $size(SPEED_UPGRADE_SEQUENCE); i++) begin
+      if (SPEED_UPGRADE_SEQUENCE[i] == current_speed) begin
+        seq_idx   = i;
+        found_idx = 1'b1;
+      end
+    end
+
+    if (found_idx && (seq_idx + 1) < $size(SPEED_UPGRADE_SEQUENCE))
+      current_speed = SPEED_UPGRADE_SEQUENCE[seq_idx + 1];
+
+    directed_speed_change        = 1'b0;
+    changed_speed_recovery       = 1'b1;
+    current_rate                  = current_speed;
+    equalization_done_this_speed = 1'b0;
+    symbol_lock_acquired         = 1'b0;
+
+    if (current_speed == ep_agent_cfg_h.target_link_speed)
+      successful_speed_negotiation = 1'b1;
+
+    `uvm_info(name, $sformatf("EP: Recovery.Speed complete - now at %s -> RcvrLock",
+                               current_speed.name()), UVM_LOW)
+
+    next_state             = RECOVERY_ST;
+    next_recovery_substate = RECOVERY_RCVR_LOCK;
+  endtask : run_recovery_speed
+
+  // -----------------------------------------------------------------------
+  // Task: run_recovery_eq_phase0
+  // -----------------------------------------------------------------------
+  task automatic run_recovery_eq_phase0(output ltssm_state_e      next_state,
+                                         output recovery_substate_e next_recovery_substate);
+    modified_ts_bytes_t tx_content;
+    modified_ts_bytes_t rx_content;
+    bit                 rx_valid;
+    int unsigned        consec_match_cnt;
+    time                start_time;
+
+    current_recovery_substate = RECOVERY_EQ_PHASE0;
+    `uvm_info(name, "EP: Entering Recovery.EQ Phase 0 (receive RC preset, echo back)", UVM_MEDIUM)
+
+    consec_match_cnt = 0;
+    start_time       = $time;
+    negotiated_tx_preset = 8'h00; 
+
+ 
+    tx_content.id           = MOD_TS1_ID;
+    tx_content.link_number  = configured_link_number;
+    tx_content.lane_number  = PAD_SYMBOL;
+    tx_content.n_fts         = ep_agent_cfg_h.ntfs;
+    tx_content.data_rate_id = 8'h3F;
+    tx_content.ec_byte       = EC_PHASE0_1;
+    tx_content.payload       = negotiated_tx_preset; 
+
+    fork
+      forever drive_modified_ts(tx_content);
+    join_none
+
+    forever begin
+      receive_modified_ts(rx_content, rx_valid);
+
+      if (rx_valid && rx_content.id == MOD_TS2_ID &&
+          rx_content.ec_byte == EC_PHASE0_1 &&
+          rx_content.link_number == configured_link_number) begin
+
+ 
+        if (negotiated_tx_preset != rx_content.payload) begin
+          negotiated_tx_preset = rx_content.payload;
+          tx_content.payload   = negotiated_tx_preset;
+          `uvm_info(name, $sformatf("EP: EQ Phase 0 - latched RC preset 0x%0h, now echoing",
+                                     negotiated_tx_preset), UVM_HIGH)
+          consec_match_cnt = 0;
+        end
+        else begin
+          consec_match_cnt++;
+        end
+      end
+      else begin
+        consec_match_cnt = 0;
+      end
+
+      if (consec_match_cnt >= CONSEC_TS_REQUIRED) begin
+        `uvm_info(name, "EP: EQ Phase 0 complete -> Phase 1", UVM_HIGH)
+        disable fork;
+        next_state             = RECOVERY_ST;
+        next_recovery_substate = RECOVERY_EQ_PHASE1;
+        return;
+      end
+
+      if (($time - start_time) >= (RECOVERY_TIMEOUT_MS * 1ms)) begin
+        `uvm_error(name, "EP: EQ Phase 0 Timeout -> Detect")
+        disable fork;
+        next_state             = DETECT_ST;
+        next_recovery_substate = RECOVERY_EQ_PHASE0;
+        return;
+      end
+    end
+  endtask : run_recovery_eq_phase0
+
+  // -----------------------------------------------------------------------
+  // Task: run_recovery_eq_phase1
+  // -----------------------------------------------------------------------
+  task automatic run_recovery_eq_phase1(output ltssm_state_e      next_state,
+                                         output recovery_substate_e next_recovery_substate);
+    modified_ts_bytes_t tx_content;
+    modified_ts_bytes_t rx_content;
+    bit                 rx_valid;
+    int unsigned        consec_match_cnt;
+    time                start_time;
+
+    current_recovery_substate = RECOVERY_EQ_PHASE1;
+    `uvm_info(name, "EP: Entering Recovery.EQ Phase 1 (FS/LF exchange)", UVM_MEDIUM)
+
+    consec_match_cnt = 0;
+    start_time       = $time;
+
+    tx_content.id           = MOD_TS1_ID;
+    tx_content.link_number  = configured_link_number;
+    tx_content.lane_number  = PAD_SYMBOL;
+    tx_content.n_fts         = ep_agent_cfg_h.ntfs;
+    tx_content.data_rate_id = 8'h3F;
+    tx_content.ec_byte       = EC_PHASE0_1;
+    tx_content.payload       = 8'hF4;
+
+    fork
+      forever drive_modified_ts(tx_content);
+    join_none
+
+    forever begin
+      receive_modified_ts(rx_content, rx_valid);
+
+      if (rx_valid && rx_content.id == MOD_TS1_ID &&
+          rx_content.ec_byte == EC_PHASE0_1 &&
+          rx_content.link_number == configured_link_number) begin
+        consec_match_cnt++;
+      end
+      else begin
+        consec_match_cnt = 0;
+      end
+
+      if (consec_match_cnt >= CONSEC_TS_COUNT) begin
+        `uvm_info(name, "EP: EQ Phase 1 complete -> Phase 2", UVM_HIGH)
+        disable fork;
+        next_state             = RECOVERY_ST;
+        next_recovery_substate = RECOVERY_EQ_PHASE2;
+        return;
+      end
+
+      if (($time - start_time) >= (RECOVERY_TIMEOUT_MS * 1ms)) begin
+        `uvm_error(name, "EP: EQ Phase 1 Timeout -> Detect")
+        disable fork;
+        next_state             = DETECT_ST;
+        next_recovery_substate = RECOVERY_EQ_PHASE1;
+        return;
+      end
+    end
+  endtask : run_recovery_eq_phase1
+
+  // -----------------------------------------------------------------------
+  // Task: run_recovery_eq_phase2
+  // -----------------------------------------------------------------------
+  task automatic run_recovery_eq_phase2(output ltssm_state_e      next_state,
+                                         output recovery_substate_e next_recovery_substate);
+    modified_ts_bytes_t tx_content;
+    modified_ts_bytes_t rx_content;
+    bit                 rx_valid;
+    int unsigned        consec_match_cnt;
+    time                start_time;
+
+    current_recovery_substate = RECOVERY_EQ_PHASE2;
+    `uvm_info(name, "EP: Entering Recovery.EQ Phase 2 (RC adjusts EP Tx coeff)", UVM_MEDIUM)
+
+    consec_match_cnt = 0;
+    start_time       = $time;
+
+    tx_content.id           = MOD_TS1_ID;
+    tx_content.link_number  = configured_link_number;
+    tx_content.lane_number  = PAD_SYMBOL;
+    tx_content.n_fts         = ep_agent_cfg_h.ntfs;
+    tx_content.data_rate_id = 8'h3F;
+    tx_content.ec_byte       = EC_PHASE2;
+    tx_content.payload       = 8'h07;
+
+    fork
+      forever drive_modified_ts(tx_content);
+    join_none
+
+    forever begin
+      receive_modified_ts(rx_content, rx_valid);
+
+      if (rx_valid && rx_content.id == MOD_TS1_ID &&
+          rx_content.ec_byte == EC_PHASE2 &&
+          rx_content.link_number == configured_link_number) begin
+        consec_match_cnt++;
+      end
+      else begin
+        consec_match_cnt = 0;
+      end
+
+      if (consec_match_cnt >= CONSEC_TS_COUNT) begin
+        `uvm_info(name, "EP: EQ Phase 2 complete -> Phase 3", UVM_HIGH)
+        disable fork;
+        next_state             = RECOVERY_ST;
+        next_recovery_substate = RECOVERY_EQ_PHASE3;
+        return;
+      end
+
+      if (($time - start_time) >= (RECOVERY_TIMEOUT_MS * 1ms)) begin
+        `uvm_error(name, "EP: EQ Phase 2 Timeout -> Detect")
+        disable fork;
+        next_state             = DETECT_ST;
+        next_recovery_substate = RECOVERY_EQ_PHASE2;
+        return;
+      end
+    end
+  endtask : run_recovery_eq_phase2
+
+  // -----------------------------------------------------------------------
+  // Task: run_recovery_eq_phase3
+  // -----------------------------------------------------------------------
+  task automatic run_recovery_eq_phase3(output ltssm_state_e      next_state,
+                                         output recovery_substate_e next_recovery_substate);
+    modified_ts_bytes_t tx_content;
+    modified_ts_bytes_t rx_content;
+    bit                 rx_valid;
+    int unsigned        consec_match_cnt;
+    time                start_time;
+
+    current_recovery_substate = RECOVERY_EQ_PHASE3;
+    `uvm_info(name, "EP: Entering Recovery.EQ Phase 3 (EP adjusts RC Tx coeff)", UVM_MEDIUM)
+
+    consec_match_cnt = 0;
+    start_time       = $time;
+
+    tx_content.id           = MOD_TS1_ID;
+    tx_content.link_number  = configured_link_number;
+    tx_content.lane_number  = PAD_SYMBOL;
+    tx_content.n_fts         = ep_agent_cfg_h.ntfs;
+    tx_content.data_rate_id = 8'h3F;
+    tx_content.ec_byte       = EC_PHASE3;
+    tx_content.payload       = 8'h49;
+
+    fork
+      forever drive_modified_ts(tx_content);
+    join_none
+
+    forever begin
+      receive_modified_ts(rx_content, rx_valid);
+
+      if (rx_valid && rx_content.id == MOD_TS1_ID &&
+          rx_content.ec_byte == EC_PHASE3 &&
+          rx_content.link_number == configured_link_number) begin
+        consec_match_cnt++;
+      end
+      else begin
+        consec_match_cnt = 0;
+      end
+
+      if (consec_match_cnt >= CONSEC_TS_COUNT) begin
+        `uvm_info(name, "EP: EQ Phase 3 complete - EQUALIZATION DONE -> RcvrLock", UVM_LOW)
+        disable fork;
+        equalization_done_this_speed = 1'b1;
+        next_state             = RECOVERY_ST;
+        next_recovery_substate = RECOVERY_RCVR_LOCK;
+        return;
+      end
+
+      if (($time - start_time) >= (RECOVERY_TIMEOUT_MS * 1ms)) begin
+        `uvm_error(name, "EP: EQ Phase 3 Timeout -> Detect")
+        disable fork;
+        next_state             = DETECT_ST;
+        next_recovery_substate = RECOVERY_EQ_PHASE3;
+        return;
+      end
+    end
+  endtask : run_recovery_eq_phase3
+
+  // -----------------------------------------------------------------------
+  // Task: run_recovery_idle
+  // -----------------------------------------------------------------------
+  task automatic run_recovery_idle(output ltssm_state_e next_state,
+                                    output recovery_substate_e next_recovery_substate);
+    bit [7:0]    rx_byte [0:PCIE_MAX_LANES-1];
+    bit          rx_ok   [0:PCIE_MAX_LANES-1];
+    bit          all_lanes_idle;
+    int unsigned consec_idle_cnt;
+    int unsigned idle_attempt_cnt;
+    int unsigned local_idle_tx_count;
+
+    current_recovery_substate = RECOVERY_IDLE;
+    `uvm_info(name, "EP: Entering Recovery.Idle", UVM_MEDIUM)
+
+    consec_idle_cnt     = 0;
+    idle_attempt_cnt     = 0;
+    local_idle_tx_count  = 0;
+
+    fork
+      forever begin
+        drive_idle();
+        local_idle_tx_count++;
+      end
+    join_none
+
+    forever begin
+      receive_idle(rx_byte, rx_ok);
+      idle_attempt_cnt++;
+
+      all_lanes_idle = 1'b1;
+      for (int l = 0; l < ep_agent_cfg_h.active_lanes; l++)
+        if (!(rx_ok[l] && (rx_byte[l] == IDLE_SYMBOL))) all_lanes_idle = 1'b0;
+
+      consec_idle_cnt = all_lanes_idle ? consec_idle_cnt + 1 : 0;
+
+      if ((consec_idle_cnt >= MIN_IDLE_RX) && (local_idle_tx_count >= MIN_IDLE_TX)) begin
+        `uvm_info(name, "EP: Recovery.Idle complete -> L0", UVM_LOW)
+        disable fork;
+        next_state             = L0_ST;
+        next_recovery_substate = RECOVERY_IDLE;
+
+        return;
+      end
+
+      if (idle_attempt_cnt >= ep_agent_cfg_h.config_timeout_ts_count) begin
+        `uvm_warning(name, "EP: Recovery.Idle timeout -> Recovery.RcvrLock (spec 4.2.7.4.5)")
+        disable fork;
+        next_state             = RECOVERY_ST;
+        next_recovery_substate = RECOVERY_RCVR_LOCK;
+        return;
+      end
+    end
+  endtask : run_recovery_idle
 
 endinterface : pcie_phy_ep_driver_bfm
 

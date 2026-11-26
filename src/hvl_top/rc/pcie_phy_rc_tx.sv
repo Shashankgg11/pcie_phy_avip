@@ -52,6 +52,7 @@ class pcie_phy_rc_tx extends uvm_sequence_item;
   detect_substate_e  rsp_detect_substate;
   polling_substate_e rsp_polling_substate;
   config_substate_e  rsp_config_substate;
+  recovery_substate_e rsp_recovery_substate;
  
   // NOTE: An error injection field could be added here later.
   // The required enum (pcie_phy_error_inject_e) is not defined
@@ -95,5 +96,6 @@ function void pcie_phy_rc_tx::do_print(uvm_printer printer);
   printer.print_field ("force_lane_reversal", force_lane_reversal, 1);
   printer.print_string("task_id", task_id.name());
   printer.print_string("rsp_state", rsp_state.name());
+  printer.print_string("rsp_recovery_substate", rsp_recovery_substate.name());
 endfunction : do_print
 `endif

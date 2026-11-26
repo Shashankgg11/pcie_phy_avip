@@ -2049,6 +2049,15 @@ interface pcie_phy_rc_driver_bfm(input  logic pclk,
 
         if (consec_ts2_cnt >= CONSEC_TS_COUNT) begin
           disable fork;
+          // Spec 4.2.7.4.4: keep sending TS2 after receiving 8, so the partner (which may
+          // have started RcvrCfg later) also sees 8 consecutive TS2
+          repeat (16)
+            drive_ts(OS_TS2, configured_link_number, PAD_SYMBOL,
+                     directed_speed_change,
+                     rc_agent_cfg_h.default_autonomous_change, rc_agent_cfg_h.default_elbc,
+                     rc_agent_cfg_h.default_no_scrambling, rc_agent_cfg_h.default_loopback,
+                     rc_agent_cfg_h.default_disable_link, rc_agent_cfg_h.default_hot_reset,
+                     1'b1);
 
           need_another_speed_step = (current_speed != rc_agent_cfg_h.target_link_speed);
 

@@ -164,6 +164,71 @@ task pcie_phy_virtual_link_training_seq::body();
     end
   end
 
+  //-------------------------------------------------------
+  // Recovery - hold in L0, request Recovery, then each side runs RcvrLock -> RcvrCfg
+  // on its own (PCIe 6.0 spec 4.2.7.4). The sides are NOT lock-stepped: the side that
+  // finishes RcvrLock first goes straight into RcvrCfg and sends TS2, which the slower
+  // side's RcvrLock accepts as its exit condition.
+  //-------------------------------------------------------
+  begin
+    pcie_phy_rc_recovery_rcvrlock_seq rc_lock;
+    pcie_phy_ep_recovery_rcvrlock_seq ep_lock;
+    pcie_phy_rc_recovery_rcvrcfg_seq  rc_cfg;
+    pcie_phy_ep_recovery_rcvrcfg_seq  ep_cfg;
+    bit rc_lock_done;
+    bit ep_lock_done;
+
+    rc_lock = pcie_phy_rc_recovery_rcvrlock_seq::type_id::create("rc_lock");
+    ep_lock = pcie_phy_ep_recovery_rcvrlock_seq::type_id::create("ep_lock");
+    rc_cfg  = pcie_phy_rc_recovery_rcvrcfg_seq::type_id::create("rc_cfg");
+    ep_cfg  = pcie_phy_ep_recovery_rcvrcfg_seq::type_id::create("ep_cfg");
+
+    `uvm_info(get_type_name(), "In L0 - holding 5us, then requesting Recovery", UVM_LOW)
+    #5us;
+
+    // recovery_request is one shared flag that either run_l0 may clear, so keep
+    // asserting it until both RcvrLock sequences have returned
+    rc_lock_done = 1'b0;
+    ep_lock_done = 1'b0;
+    fork
+      begin
+        while (!(rc_lock_done && ep_lock_done)) begin
+          pcie_phy_pkg::recovery_request = 1'b1;
+          #100ns;
+        end
+        pcie_phy_pkg::recovery_request = 1'b0;
+      end
+    join_none
+
+    fork
+      begin : rc_recovery_thread
+        rc_lock.start(p_sequencer.pcie_phy_rc_ltssm_seqr_h);
+        rc_lock_done = 1'b1;
+        if (rc_lock.req.rsp_state == RECOVERY_ST && rc_lock.req.rsp_recovery_substate == RECOVERY_RCVR_CFG)
+          rc_cfg.start(p_sequencer.pcie_phy_rc_ltssm_seqr_h);
+        else
+          `uvm_error(get_type_name(), $sformatf("RC RcvrLock did not reach RcvrCfg: %s/%s",
+                     rc_lock.req.rsp_state.name(), rc_lock.req.rsp_recovery_substate.name()))
+      end
+      begin : ep_recovery_thread
+        ep_lock.start(p_sequencer.pcie_phy_ep_ltssm_seqr_h);
+        ep_lock_done = 1'b1;
+        if (ep_lock.req.rsp_state == RECOVERY_ST && ep_lock.req.rsp_recovery_substate == RECOVERY_RCVR_CFG)
+          ep_cfg.start(p_sequencer.pcie_phy_ep_ltssm_seqr_h);
+        else
+          `uvm_error(get_type_name(), $sformatf("EP RcvrLock did not reach RcvrCfg: %s/%s",
+                     ep_lock.req.rsp_state.name(), ep_lock.req.rsp_recovery_substate.name()))
+      end
+    join
+
+    if (rc_cfg.req != null && ep_cfg.req != null)
+      `uvm_info(get_type_name(),
+                $sformatf("RECOVERY REACHED - RcvrCfg exit: RC=%s/%s EP=%s/%s",
+                          rc_cfg.req.rsp_state.name(), rc_cfg.req.rsp_recovery_substate.name(),
+                          ep_cfg.req.rsp_state.name(), ep_cfg.req.rsp_recovery_substate.name()),
+                UVM_LOW)
+  end
+
 endtask : body
 
 `endif

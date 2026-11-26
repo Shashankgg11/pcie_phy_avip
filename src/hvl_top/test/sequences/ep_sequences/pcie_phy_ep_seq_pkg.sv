@@ -23,6 +23,7 @@ package pcie_phy_ep_seq_pkg;
   `include "pcie_phy_ep_recovery_equalization_seq.sv"
   `include "pcie_phy_ep_recovery_speed_seq.sv"
   `include "pcie_phy_ep_recovery_rcvrcfg_seq.sv"
+//  `include "pcie_phy_ep_recovery_idle_seq.sv"
   `include "pcie_phy_ep_l0_seq.sv"
   `include "pcie_phy_ep_l0p_seq.sv"
   `include "pcie_phy_ep_l0s_seq.sv"
